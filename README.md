@@ -18,10 +18,19 @@ This repository follows a GitFlow-style workflow to keep development organized a
 - Feature branches are created from `develop` and merged back into `develop` only after review and validation.
 - `master` is updated only from a verified `develop` branch.
 
+Current branch map:
+
+```text
+master
+└── develop
+    ├── feature/login
+    └── feature/ui-reports
+```
+
 Current feature branches in the project:
 
-- `feature/ui-reports` — dashboard/reporting and presentation layer work
-- `feature/login` — authentication flow and login experience
+- `feature/login` — authentication flow, cookie login/logout and role-based access
+- `feature/ui-reports` — dashboard, report screens, and presentation-layer polish
 
 Recommended workflow:
 
@@ -32,8 +41,29 @@ Recommended workflow:
 5. Validate the build/tests before merging
 6. Merge feature branches into `develop`
 7. Merge `develop` into `master` once the release is stable
+8. Do not commit directly to `master` or `develop` for feature work
 
-This keeps the team aligned and ensures each developer owns a clear feature slice without mixing unrelated work in a single branch.
+This keeps the team aligned and ensures each developer owns a clear feature slice without mixing unrelated work in a single branch. If more feature work is added later, use the same naming pattern: `feature/<area>` such as `feature/transactions` or `feature/audit-security`.
+
+## Requirement coverage checklist
+
+This project is intentionally scoped to the Week 2 ApexPost specification and avoids speculative or unrelated features.
+
+- Branches and counters: branch records, branch status, counter assignments, and closed-branch rules are implemented.
+- Staff roles: counter clerk, branch manager, auditor and administrator are modelled and used in authorization.
+- Retail catalogue and stock: product catalog, per-branch stock, low-stock thresholds and reporting are in place.
+- Postal and financial services: parcel/letter shipping, service levels, pricing strategy, money orders and identity verification are implemented.
+- Mixed basket transaction model: a single transaction can include retail goods and service lines, with totals, tax and status tracking.
+- Business rules enforced: insufficient stock, inactive staff, branch mismatch, money-order verification threshold, parcel weight caps, manager-only void/refund, and closed branch restrictions.
+- Reports: daily sales, low-stock, shipping volume and money-order/auditor reports are included.
+- Persistence and notifications: JSON repositories and simulated events are used behind abstractions, with no database in Week 2.
+- Advanced C# 14 usage: records/value objects, pattern matching, delegates, generic repositories, async patterns, ValueTask cache, Task.WhenAll, and SemaphoreSlim are all applied to real problems.
+- Security + audit: middleware pipeline, auth policies, API key validation, IP filtering, rate limiting, correlation IDs, audit store, redaction of sensitive values, and Problem Details responses are implemented.
+- Tests and docs: the project includes xUnit business-rule checks, MVC integration tests, README, DESIGN.md, ADRs, and an audit sample file.
+
+## Scope boundaries
+
+This Week 2 release intentionally does not introduce a database, ORM, ASP.NET Core Identity, or unrelated business modules. The design is deliberately limited to the ApexPost Week 2 requirement list so the code remains easier to extend into Database/API/Cloud weeks without carrying unnecessary complexity.
 
 ## Prerequisites
 

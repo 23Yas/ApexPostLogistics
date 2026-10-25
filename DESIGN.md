@@ -72,6 +72,27 @@ Why this order matters:
 | Model validation | Action filter | Tied to MVC model binding and view result handling |
 | Slow action warnings | Action filter | Needs action context and execution timing |
 
+## Git branch strategy and delivery model
+
+The repository is intentionally organized using a GitFlow-style workflow so work is isolated by feature and merged in a controlled order.
+
+```text
+master
+└── develop
+    ├── feature/login
+    └── feature/ui-reports
+```
+
+Rules:
+
+- `master` is the stable release branch.
+- `develop` is the integration branch for completed work.
+- Each feature branch is created from `develop` and stays scoped to a single area.
+- Features are merged back into `develop` only after review and validation.
+- The `master` branch is updated only after `develop` has passed verification.
+
+This pattern keeps multiple developers productive without creating branch conflicts or mixing unrelated deliverables in a single pull request.
+
 ## ADRs
 
 The project includes the following ADRs in the `docs/adr` folder:
@@ -90,6 +111,22 @@ The project includes the following ADRs in the `docs/adr` folder:
 - Liskov substitution: repository abstractions can be replaced by different storage implementations without impacting business logic
 - Interface segregation: repository contracts separate branch, staff, product, stock and transaction responsibilities
 - Dependency inversion: the web layer depends on service interfaces and application abstractions rather than concrete JSON files
+
+## Requirement traceability and review checklist
+
+The implementation tracks the Week 2 assignment in the following areas:
+
+| Requirement area | Coverage |
+| --- | --- |
+| Functional domain refactor | Branches, staff, products, inventory, shipping, money orders, verification and transactions are defined in the Core domain and application services |
+| Hybrid architecture | Core, Infrastructure and Web are separated by responsibility and dependency rules |
+| MVC front end | Login, dashboard, catalogue, transaction, shipping label, money order, verification and report views are implemented |
+| Middleware/security | Correlation ID, exception handling, timing, maintenance mode, headers, HTTPS/HSTS, API-key validation, IP filtering, rate limiting, auth, authz, CORS and health checks are configured |
+| Action filters | AuditActionFilter, ValidationFilter and PerformanceFilter provide MVC-level cross-cutting concerns |
+| Advanced C# 14 | Records, value objects, delegates, generics, pattern matching, async patterns, Task.WhenAll, ValueTask, SemaphoreSlim and custom metadata are used intentionally |
+| Testing | Unit and integration tests cover business rules, security headers, redirects, throttling and correlation ID behavior |
+| Documentation | README, DESIGN.md, ADRs and audit sample artifacts are included |
+| Branching | The repo uses a master/develop/feature workflow to keep feature work isolated and reviewer-friendly |
 
 ## Security and audit posture
 
