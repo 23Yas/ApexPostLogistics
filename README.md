@@ -9,6 +9,32 @@ ApexPost Logistics is a national postal and retail services operator. This Week 
 - ApexPost.Web — ASP.NET Core MVC UI and middleware/security pipeline
 - ApexPost.Tests — xUnit and WebApplicationFactory coverage
 
+## Branching and collaboration strategy
+
+This repository follows a GitFlow-style workflow to keep development organized across multiple team members.
+
+- `master` is the stable production branch.
+- `develop` is the integration branch for all completed features.
+- Feature branches are created from `develop` and merged back into `develop` only after review and validation.
+- `master` is updated only from a verified `develop` branch.
+
+Current feature branches in the project:
+
+- `feature/ui-reports` — dashboard/reporting and presentation layer work
+- `feature/login` — authentication flow and login experience
+
+Recommended workflow:
+
+1. Start from `develop`
+2. Create a feature branch for one delivery area only
+3. Commit only the work related to that feature
+4. Open a pull request into `develop`
+5. Validate the build/tests before merging
+6. Merge feature branches into `develop`
+7. Merge `develop` into `master` once the release is stable
+
+This keeps the team aligned and ensures each developer owns a clear feature slice without mixing unrelated work in a single branch.
+
 ## Prerequisites
 
 - .NET 10 SDK
