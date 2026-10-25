@@ -1,0 +1,42 @@
+@model IEnumerable<ApexPost.Core.Domain.StockItem>
+@{
+    ViewData["Title"] = "Low stock";
+}
+
+<div class="page-header mb-4">
+    <div>
+        <p class="eyebrow text-uppercase">Inventory control</p>
+        <h1>Low-stock report</h1>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h3>Items below the reorder threshold</h3>
+    </div>
+    <div class="table-wrap">
+        <table class="table modern-table">
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>SKU</th>
+                    <th>Quantity</th>
+                    <th>Threshold</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.BranchCode.Value</td>
+                        <td>@item.ProductSku.Value</td>
+                        <td>@item.QuantityOnHand</td>
+                        <td>@item.ReorderThreshold</td>
+                        <td><span class="badge bg-warning text-dark">Reorder</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

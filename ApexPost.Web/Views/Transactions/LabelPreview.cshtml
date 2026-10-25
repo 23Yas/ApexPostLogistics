@@ -1,0 +1,56 @@
+@{
+    ViewData["Title"] = "Shipping label preview";
+    var quote = ViewBag.ShippingQuote as ApexPost.Core.Domain.ShippingQuote;
+}
+
+<div class="page-header mb-4">
+    <div>
+        <p class="eyebrow text-uppercase">Postal services</p>
+        <h1>Shipping label preview</h1>
+    </div>
+    <div class="header-badge">Parcel review</div>
+</div>
+
+<div class="panel">
+    <form asp-action="LabelPreview" method="post" class="transaction-form">
+        @Html.AntiForgeryToken()
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label" for="zone">Destination zone</label>
+                <input id="zone" name="zone" type="text" class="form-control" value="North" required />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="serviceLevel">Service level</label>
+                <select id="serviceLevel" name="serviceLevel" class="form-select">
+                    @foreach (var serviceLevel in ViewBag.ServiceLevels as IEnumerable<string> ?? Array.Empty<string>())
+                    {
+                        <option value="@serviceLevel">@serviceLevel</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="weightKg">Weight kg</label>
+                <input id="weightKg" name="weightKg" type="number" step="0.1" class="form-control" value="1.5" required />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="form-check">
+                    <input id="isLetter" class="form-check-input" type="checkbox" name="isLetter" value="true" />
+                    <label class="form-check-label" for="isLetter">Letter</label>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Generate preview</button>
+    </form>
+
+    @if (quote is not null)
+    {
+        <div class="alert @(ViewBag.IsValid ? "alert-success" : "alert-warning") mt-4">
+            <strong>Label status:</strong> @(ViewBag.IsValid ? "Accepted" : "Rejected")<br />
+            Zone: @quote.Zone<br />
+            Service: @quote.ServiceLevel<br />
+            Weight: @quote.Weight.ValueKg kg<br />
+            Type: @(quote.IsLetter ? "Letter" : "Parcel")
+        </div>
+    }
+</div>

@@ -1,0 +1,48 @@
+@{
+    ViewData["Title"] = "Catalogue";
+}
+
+<div class="page-header mb-4">
+    <div>
+        <p class="eyebrow text-uppercase">Retail operations</p>
+        <h1>Retail catalogue and stock</h1>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h3>Branch product availability</h3>
+    </div>
+    <div class="table-wrap">
+        <table class="table modern-table">
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model is IEnumerable<dynamic> rows)
+                {
+                    foreach (var row in rows)
+                    {
+                        <tr>
+                            <td>@row.Product.Sku.Value</td>
+                            <td>@row.Product.Name</td>
+                            <td>@row.Product.Category</td>
+                            <td>£@String.Format("{0:N2}", row.Product.UnitPrice.Amount)</td>
+                            <td>@row.QuantityOnHand</td>
+                            <td>
+                                <span class="badge @(row.IsLowStock ? "bg-warning text-dark" : "bg-success")">@(row.IsLowStock ? "Low stock" : "Available")</span>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

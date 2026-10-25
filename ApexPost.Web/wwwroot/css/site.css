@@ -1,0 +1,270 @@
+:root {
+    --apex-navy: #0f172a;
+    --apex-slate: #1e293b;
+    --apex-gold: #f59e0b;
+    --apex-blue: #2563eb;
+    --apex-green: #10b981;
+    --apex-surface: #f8fafc;
+    --apex-border: rgba(15, 23, 42, 0.08);
+    --apex-text: #0f172a;
+}
+
+html {
+    font-size: 14px;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 15px;
+    }
+}
+
+body {
+    margin: 0;
+    background: linear-gradient(180deg, #eef4ff 0%, #f8fafc 100%);
+    color: var(--apex-text);
+    min-height: 100vh;
+}
+
+.apex-body {
+    font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+.topbar {
+    background: rgba(15, 23, 42, 0.96);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.brand-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #fff !important;
+}
+
+.brand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, var(--apex-gold), #fbbf24);
+    color: var(--apex-navy);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.navbar .nav-link {
+    color: rgba(255, 255, 255, 0.82) !important;
+    font-weight: 600;
+}
+
+.navbar .nav-link:hover {
+    color: #fff !important;
+}
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: clamp(1.8rem, 2vw, 2.4rem);
+    font-weight: 700;
+}
+
+.eyebrow {
+    margin-bottom: 0.5rem;
+    color: var(--apex-blue);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.header-badge {
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--apex-blue);
+    border: 1px solid rgba(37, 99, 235, 0.14);
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    font-weight: 700;
+}
+
+.stat-card,
+.panel {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--apex-border);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    border-radius: 1rem;
+}
+
+.stat-card {
+    padding: 1.25rem 1.15rem;
+    min-height: 122px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.stat-card span {
+    font-size: 0.77rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.7;
+}
+
+.stat-card strong {
+    font-size: 1.55rem;
+    font-weight: 700;
+}
+
+.stat-card.primary { border-top: 4px solid var(--apex-blue); }
+.stat-card.success { border-top: 4px solid var(--apex-green); }
+.stat-card.warning { border-top: 4px solid var(--apex-gold); }
+.stat-card.info { border-top: 4px solid #7c3aed; }
+
+.panel {
+    padding: 1.2rem 1.1rem;
+}
+
+.panel-header {
+    margin-bottom: 1rem;
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.toolbar-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.quick-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.quick-links a {
+    display: block;
+    padding: 0.9rem 1rem;
+    border-radius: 0.8rem;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(16, 185, 129, 0.06));
+    color: var(--apex-text);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.modern-table {
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.modern-table th {
+    background: #f1f5f9;
+    color: var(--apex-slate);
+    font-size: 0.73rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.9rem 0.9rem;
+}
+
+.modern-table td {
+    padding: 0.9rem;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    vertical-align: middle;
+}
+
+.auth-shell {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.auth-panel {
+    width: min(100%, 460px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--apex-border);
+    border-radius: 1.25rem;
+    padding: 2rem;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+}
+
+.auth-intro h1 {
+    margin: 0 0 0.75rem;
+    font-weight: 800;
+}
+
+.auth-intro p {
+    color: #475569;
+    margin-bottom: 1.5rem;
+}
+
+.login-form .form-control,
+.transaction-form .form-control,
+.transaction-form .form-select {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    padding: 0.8rem 0.9rem;
+}
+
+.demo-accounts ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.5rem;
+    color: #475569;
+    font-size: 0.95rem;
+}
+
+.transaction-form {
+    display: block;
+}
+
+.alert {
+    border-radius: 0.8rem;
+}
+
+.btn {
+    border-radius: 0.8rem;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--apex-blue), #1d4ed8);
+    border: none;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.02);
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+@media (max-width: 767px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

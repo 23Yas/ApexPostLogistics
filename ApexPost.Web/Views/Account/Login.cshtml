@@ -1,0 +1,33 @@
+@{
+    ViewData["Title"] = "Login";
+}
+
+<div class="auth-shell">
+    <div class="auth-panel">
+        <div class="auth-intro">
+            <p class="eyebrow">ApexPost operational access</p>
+            <h1>Counter platform login</h1>
+            <p>Access the branch dashboard, stock view and transaction operations across your counter network.</p>
+        </div>
+
+        <form asp-action="Login" method="post" class="login-form">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Staff email</label>
+                <input type="email" name="email" class="form-control" placeholder="name@apexpost.local" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100">Log in</button>
+        </form>
+
+        <div class="demo-accounts mt-4">
+            <h6>Demo accounts</h6>
+            <ul>
+                <li><strong>Counter clerk:</strong> ava.reed@apexpost.local</li>
+                <li><strong>Branch manager:</strong> chloe.moss@apexpost.local</li>
+                <li><strong>Auditor:</strong> daniel.price@apexpost.local</li>
+                <li><strong>Administrator:</strong> ella.north@apexpost.local</li>
+            </ul>
+        </div>
+    </div>
+</div>

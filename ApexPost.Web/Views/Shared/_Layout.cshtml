@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ApexPost Counter Platform</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="apex-body">
+    <header class="topbar">
+        <nav class="navbar navbar-expand-lg container-fluid px-4 py-3">
+            <a class="navbar-brand brand-mark" asp-controller="Home" asp-action="Dashboard">
+                <span class="brand-icon">AP</span>
+                <span>ApexPost</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Dashboard">Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Catalogue">Catalogue</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Transactions" asp-action="New">New transaction</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Transactions" asp-action="MoneyOrder">Money order</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Transactions" asp-action="IdentityVerification">ID verification</a></li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Reports</a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" asp-controller="Reports" asp-action="Daily">Daily sales</a></li>
+                                <li><a class="dropdown-item" asp-controller="Reports" asp-action="LowStock">Low stock</a></li>
+                                <li><a class="dropdown-item" asp-controller="Reports" asp-action="Shipping">Shipping volumes</a></li>
+                                <li><a class="dropdown-item" asp-controller="Reports" asp-action="MoneyOrders">Money order view</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-light btn-sm rounded-pill px-3">Logout</button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container py-4">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

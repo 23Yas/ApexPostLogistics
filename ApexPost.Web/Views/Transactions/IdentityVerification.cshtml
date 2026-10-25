@@ -1,0 +1,49 @@
+@{
+    ViewData["Title"] = "Identity verification";
+}
+
+<div class="page-header mb-4">
+    <div>
+        <p class="eyebrow text-uppercase">Compliance</p>
+        <h1>Identity verification</h1>
+    </div>
+    <div class="header-badge">Branch @ViewBag.BranchCode</div>
+</div>
+
+@if (TempData["SuccessMessage"] is string successMessage)
+{
+    <div class="alert alert-success">@successMessage</div>
+}
+
+<div class="panel">
+    <form asp-action="IdentityVerification" method="post" class="transaction-form">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label" for="customerName">Customer name</label>
+                <input id="customerName" name="customerName" type="text" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="documentType">Document type</label>
+                <select id="documentType" name="documentType" class="form-select" required>
+                    <option value="">Select document</option>
+                    <option value="Passport">Passport</option>
+                    <option value="Driving licence">Driving licence</option>
+                    <option value="National ID">National ID</option>
+                </select>
+            </div>
+            <div class="col-md-12">
+                <label class="form-label" for="maskedIdentifier">Masked identifier</label>
+                <input id="maskedIdentifier" name="maskedIdentifier" type="text" class="form-control" placeholder="e.g. ***1234" required />
+            </div>
+        </div>
+
+        <div class="alert alert-light mt-4">
+            Full document numbers are never stored. Only the masked suffix is retained for audit and compliance review.
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Save verification</button>
+    </form>
+</div>

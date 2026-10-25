@@ -1,0 +1,99 @@
+@{
+    ViewData["Title"] = "Branch dashboard";
+}
+
+<div class="page-header mb-4">
+    <div>
+        <p class="eyebrow text-uppercase">Operating summary</p>
+        <h1>Branch dashboard</h1>
+    </div>
+    <div class="header-badge">@ViewBag.BranchCode</div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card primary">
+            <span>Branch</span>
+            <strong>@ViewBag.BranchName</strong>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card success">
+            <span>Sales today</span>
+            <strong>£@String.Format("{0:N2}", ViewBag.SalesToday)</strong>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card warning">
+            <span>Low stock alerts</span>
+            <strong>@ViewBag.LowStockCount</strong>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card info">
+            <span>Transactions</span>
+            <strong>@ViewBag.TransactionCount</strong>
+        </div>
+    </div>
+</div>
+
+<div class="toolbar-row mb-4">
+    <a asp-controller="Transactions" asp-action="New" class="btn btn-primary">Create transaction</a>
+    <a asp-controller="Home" asp-action="Catalogue" class="btn btn-outline-primary">Catalogue & stock</a>
+    <a asp-controller="Reports" asp-action="LowStock" class="btn btn-outline-secondary">Low stock</a>
+    <a asp-controller="Reports" asp-action="Daily" class="btn btn-outline-secondary">Daily sales</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Branch stock snapshot</h3>
+            </div>
+            <div class="table-wrap">
+                <table class="table modern-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Threshold</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (ViewBag.ProductRows is IEnumerable<dynamic> productRows)
+                        {
+                            foreach (var row in productRows)
+                            {
+                                <tr>
+                                    <td>@row.ProductSku</td>
+                                    <td>@row.ProductName</td>
+                                    <td>@row.QuantityOnHand</td>
+                                    <td>@row.ReorderThreshold</td>
+                                    <td>
+                                        <span class="badge @(row.Status == "Low" ? "bg-warning text-dark" : "bg-success")">@row.Status</span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Operations</h3>
+            </div>
+            <ul class="quick-links">
+                <li><a asp-controller="Transactions" asp-action="New">New retail or service sale</a></li>
+                <li><a asp-controller="Reports" asp-action="Shipping">Shipping volume by service</a></li>
+                <li><a asp-controller="Reports" asp-action="MoneyOrders">Money orders and verifications</a></li>
+                <li><a asp-controller="Reports" asp-action="LowStock">Replenishment priority</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
