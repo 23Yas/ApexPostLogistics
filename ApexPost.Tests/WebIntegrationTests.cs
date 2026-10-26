@@ -53,7 +53,7 @@ public sealed class WebIntegrationTests : IClassFixture<CustomWebApplicationFact
     public async Task LoginEndpoint_ReturnsTooManyRequests_AfterLimitExceeded()
     {
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var content = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("email", "ava.reed@apexpost.local") });
+        var content = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("email", "ava.reed@apexpost.local"), new KeyValuePair<string, string>("password", "ApexPostClerk123!") });
 
         for (var i = 0; i < 5; i++)
         {
@@ -79,7 +79,7 @@ public sealed class WebIntegrationTests : IClassFixture<CustomWebApplicationFact
     public async Task Clerk_GetsForbidden_OnVoid()
     {
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var loginResponse = await client.PostAsync("/Account/Login", new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("email", "ava.reed@apexpost.local") }));
+        var loginResponse = await client.PostAsync("/Account/Login", new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("email", "ava.reed@apexpost.local"), new KeyValuePair<string, string>("password", "ApexPostClerk123!") }));
         Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
 
         using var response = await client.PostAsync("/Transactions/Void?transactionId=11111111-1111-1111-1111-111111111111&reason=Test", new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("reason", "Test") }));

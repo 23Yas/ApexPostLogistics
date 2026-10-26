@@ -28,10 +28,10 @@ public sealed class AccountController : Controller
 
     [AllowAnonymous]
     [HttpPost]
-    public async Task<IActionResult> Login(string email, string? returnUrl = null, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Login(string email, string password, string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         var staff = await _staffRepository.GetByEmailAsync(email, cancellationToken);
-        if (staff is null || !staff.IsActive)
+        if (staff is null || !staff.IsActive || !PasswordHasher.Verify(password, staff.PasswordHash))
         {
             ModelState.AddModelError(string.Empty, "Invalid staff credentials.");
             return View();

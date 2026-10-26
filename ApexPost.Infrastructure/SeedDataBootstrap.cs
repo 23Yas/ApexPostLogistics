@@ -1,5 +1,6 @@
 namespace ApexPost.Infrastructure;
 
+using ApexPost.Core.Application.Services;
 using ApexPost.Core.Domain;
 
 public static class SeedDataBootstrap
@@ -21,11 +22,40 @@ public static class SeedDataBootstrap
             }
         }
 
-        if ((await staffRepository.GetAllAsync(cancellationToken)).Count == 0)
+        var existingStaff = await staffRepository.GetAllAsync(cancellationToken);
+        if (existingStaff.Count == 0)
         {
             foreach (var staff in SeedData.Staff)
             {
                 await staffRepository.AddAsync(staff, cancellationToken);
+            }
+        }
+        else
+        {
+            foreach (var staff in existingStaff)
+            {
+                if (string.IsNullOrWhiteSpace(staff.PasswordHash))
+                {
+                    var rolePassword = staff.Role switch
+                    {
+                        RoleType.CounterClerk => "ApexPostClerk123!",
+                        RoleType.BranchManager => "ApexPostManager123!",
+                        RoleType.Auditor => "ApexPostAuditor123!",
+                        RoleType.Administrator => "ApexPostAdmin123!",
+                        _ => "ApexPostStaff123!"
+                    };
+
+                    await staffRepository.UpdateAsync(new Staff
+                    {
+                        Id = staff.Id,
+                        Name = staff.Name,
+                        Email = staff.Email,
+                        PasswordHash = PasswordHasher.Hash(rolePassword),
+                        Role = staff.Role,
+                        HomeBranch = staff.HomeBranch,
+                        IsActive = staff.IsActive
+                    }, cancellationToken);
+                }
             }
         }
 

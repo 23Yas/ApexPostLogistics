@@ -87,12 +87,12 @@ Then open:
 
 ## Demo accounts
 
-Use any of the following staff emails to sign in:
+Use any of the following staff emails and passwords to sign in. These are local demo credentials only and are intentionally seeded as password-hashed values in the local JSON data store.
 
-- Counter clerk: ava.reed@apexpost.local
-- Branch manager: chloe.moss@apexpost.local
-- Auditor: daniel.price@apexpost.local
-- Administrator: ella.north@apexpost.local
+- Counter clerk: ava.reed@apexpost.local / ApexPostClerk123!
+- Branch manager: chloe.moss@apexpost.local / ApexPostManager123!
+- Auditor: daniel.price@apexpost.local / ApexPostAuditor123!
+- Administrator: ella.north@apexpost.local / ApexPostAdmin123!
 
 ## API key setup
 

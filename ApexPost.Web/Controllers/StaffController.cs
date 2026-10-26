@@ -39,11 +39,17 @@ public sealed class StaffController : Controller
     [Authorize(Policy = "AdministratorOnly")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(string name, string email, RoleType role, string homeBranch, bool isActive, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create(string name, string email, string password, RoleType role, string homeBranch, bool isActive, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email))
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            ModelState.AddModelError(string.Empty, "Name and email are required.");
+            ModelState.AddModelError(string.Empty, "Name, email and password are required.");
+            return await ReloadCreateView(cancellationToken);
+        }
+
+        if (password.Length < 8)
+        {
+            ModelState.AddModelError(string.Empty, "Password must be at least 8 characters long.");
             return await ReloadCreateView(cancellationToken);
         }
 
@@ -58,6 +64,7 @@ public sealed class StaffController : Controller
         {
             Name = name,
             Email = email,
+            PasswordHash = PasswordHasher.Hash(password),
             Role = role,
             HomeBranch = new BranchCode(homeBranch),
             IsActive = isActive
@@ -95,7 +102,7 @@ public sealed class StaffController : Controller
     [Authorize(Policy = "AdministratorOnly")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(Guid id, string name, string email, RoleType role, string homeBranch, bool isActive, CancellationToken cancellationToken)
+    public async Task<IActionResult> Edit(Guid id, string name, string email, string? password, RoleType role, string homeBranch, bool isActive, CancellationToken cancellationToken)
     {
         var existing = await _staffService.GetByIdAsync(id, cancellationToken);
         if (existing is null)
@@ -103,11 +110,24 @@ public sealed class StaffController : Controller
             return NotFound();
         }
 
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email))
+        {
+            ModelState.AddModelError(string.Empty, "Name and email are required.");
+            return await ReloadEditView(id, cancellationToken);
+        }
+
+        if (!string.IsNullOrWhiteSpace(password) && password.Length < 8)
+        {
+            ModelState.AddModelError(string.Empty, "Password must be at least 8 characters long.");
+            return await ReloadEditView(id, cancellationToken);
+        }
+
         var staff = new Staff
         {
             Id = id,
             Name = name,
             Email = email,
+            PasswordHash = string.IsNullOrWhiteSpace(password) ? existing.PasswordHash : PasswordHasher.Hash(password),
             Role = role,
             HomeBranch = new BranchCode(homeBranch),
             IsActive = isActive

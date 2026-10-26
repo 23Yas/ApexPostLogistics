@@ -30,6 +30,11 @@ public sealed class StaffService
             throw new InvalidOperationException("Staff email is required.");
         }
 
+        if (string.IsNullOrWhiteSpace(staff.PasswordHash))
+        {
+            throw new InvalidOperationException("A password is required for staff login.");
+        }
+
         var existing = await _staffRepository.GetByEmailAsync(staff.Email, cancellationToken);
         if (existing is not null)
         {
@@ -57,8 +62,19 @@ public sealed class StaffService
             }
         }
 
-        await _staffRepository.UpdateAsync(staff, cancellationToken);
-        return staff;
+        var updated = new Staff
+        {
+            Id = staff.Id,
+            Name = staff.Name,
+            Email = staff.Email,
+            PasswordHash = string.IsNullOrWhiteSpace(staff.PasswordHash) ? existing.PasswordHash : staff.PasswordHash,
+            Role = staff.Role,
+            HomeBranch = staff.HomeBranch,
+            IsActive = staff.IsActive
+        };
+
+        await _staffRepository.UpdateAsync(updated, cancellationToken);
+        return updated;
     }
 
     public async Task<bool> DeactivateAsync(Guid staffId, CancellationToken cancellationToken = default)
@@ -83,9 +99,22 @@ public sealed class StaffService
         return true;
     }
 
-    public async Task<Staff?> AuthenticateAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<Staff?> AuthenticateAsync(string email, string? password, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            return null;
+        }
+
         var staff = await _staffRepository.GetByEmailAsync(email, cancellationToken);
-        return staff is { IsActive: true } ? staff : null;
+        if (staff is not { IsActive: true })
+        {
+            return null;
+        }
+
+        return PasswordHasher.Verify(password, staff.PasswordHash) ? staff : null;
     }
+
+    public Task<Staff?> AuthenticateAsync(string email, CancellationToken cancellationToken = default)
+        => AuthenticateAsync(email, null, cancellationToken);
 }

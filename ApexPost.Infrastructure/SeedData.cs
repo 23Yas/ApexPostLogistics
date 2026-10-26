@@ -1,5 +1,6 @@
 namespace ApexPost.Infrastructure;
 
+using ApexPost.Core.Application.Services;
 using ApexPost.Core.Domain;
 
 public static class SeedData
@@ -15,18 +16,18 @@ public static class SeedData
 
     public static IReadOnlyCollection<Staff> Staff { get; } =
     [
-        new Staff { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Name = "Ava Reed", Email = "ava.reed@apexpost.local", Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-001"), IsActive = true },
-        new Staff { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Name = "Ben Cole", Email = "ben.cole@apexpost.local", Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-001"), IsActive = true },
-        new Staff { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Name = "Chloe Moss", Email = "chloe.moss@apexpost.local", Role = RoleType.BranchManager, HomeBranch = new BranchCode("BR-001"), IsActive = true },
-        new Staff { Id = Guid.Parse("44444444-4444-4444-4444-444444444444"), Name = "Daniel Price", Email = "daniel.price@apexpost.local", Role = RoleType.Auditor, HomeBranch = new BranchCode("BR-002"), IsActive = true },
-        new Staff { Id = Guid.Parse("55555555-5555-5555-5555-555555555555"), Name = "Ella North", Email = "ella.north@apexpost.local", Role = RoleType.Administrator, HomeBranch = new BranchCode("BR-004"), IsActive = true },
-        new Staff { Id = Guid.Parse("66666666-6666-6666-6666-666666666666"), Name = "Frank Osei", Email = "frank.osei@apexpost.local", Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-002"), IsActive = true },
-        new Staff { Id = Guid.Parse("77777777-7777-7777-7777-777777777777"), Name = "Grace Hill", Email = "grace.hill@apexpost.local", Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-003"), IsActive = true },
-        new Staff { Id = Guid.Parse("88888888-8888-8888-8888-888888888888"), Name = "Harper Finch", Email = "harper.finch@apexpost.local", Role = RoleType.BranchManager, HomeBranch = new BranchCode("BR-002"), IsActive = true },
-        new Staff { Id = Guid.Parse("99999999-9999-9999-9999-999999999999"), Name = "Imran Khan", Email = "imran.khan@apexpost.local", Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-004"), IsActive = true },
-        new Staff { Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), Name = "Jasmine Lee", Email = "jasmine.lee@apexpost.local", Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-005"), IsActive = true },
-        new Staff { Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), Name = "Kai Turner", Email = "kai.turner@apexpost.local", Role = RoleType.BranchManager, HomeBranch = new BranchCode("BR-005"), IsActive = true },
-        new Staff { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"), Name = "Lila Brooks", Email = "lila.brooks@apexpost.local", Role = RoleType.Auditor, HomeBranch = new BranchCode("BR-003"), IsActive = true }
+        new Staff { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Name = "Ava Reed", Email = "ava.reed@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostClerk123!"), Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-001"), IsActive = true },
+        new Staff { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Name = "Ben Cole", Email = "ben.cole@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostClerk123!"), Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-001"), IsActive = true },
+        new Staff { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Name = "Chloe Moss", Email = "chloe.moss@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostManager123!"), Role = RoleType.BranchManager, HomeBranch = new BranchCode("BR-001"), IsActive = true },
+        new Staff { Id = Guid.Parse("44444444-4444-4444-4444-444444444444"), Name = "Daniel Price", Email = "daniel.price@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostAuditor123!"), Role = RoleType.Auditor, HomeBranch = new BranchCode("BR-002"), IsActive = true },
+        new Staff { Id = Guid.Parse("55555555-5555-5555-5555-555555555555"), Name = "Ella North", Email = "ella.north@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostAdmin123!"), Role = RoleType.Administrator, HomeBranch = new BranchCode("BR-004"), IsActive = true },
+        new Staff { Id = Guid.Parse("66666666-6666-6666-6666-666666666666"), Name = "Frank Osei", Email = "frank.osei@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostClerk123!"), Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-002"), IsActive = true },
+        new Staff { Id = Guid.Parse("77777777-7777-7777-7777-777777777777"), Name = "Grace Hill", Email = "grace.hill@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostClerk123!"), Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-003"), IsActive = true },
+        new Staff { Id = Guid.Parse("88888888-8888-8888-8888-888888888888"), Name = "Harper Finch", Email = "harper.finch@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostManager123!"), Role = RoleType.BranchManager, HomeBranch = new BranchCode("BR-002"), IsActive = true },
+        new Staff { Id = Guid.Parse("99999999-9999-9999-9999-999999999999"), Name = "Imran Khan", Email = "imran.khan@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostClerk123!"), Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-004"), IsActive = true },
+        new Staff { Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), Name = "Jasmine Lee", Email = "jasmine.lee@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostClerk123!"), Role = RoleType.CounterClerk, HomeBranch = new BranchCode("BR-005"), IsActive = true },
+        new Staff { Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), Name = "Kai Turner", Email = "kai.turner@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostManager123!"), Role = RoleType.BranchManager, HomeBranch = new BranchCode("BR-005"), IsActive = true },
+        new Staff { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"), Name = "Lila Brooks", Email = "lila.brooks@apexpost.local", PasswordHash = PasswordHasher.Hash("ApexPostAuditor123!"), Role = RoleType.Auditor, HomeBranch = new BranchCode("BR-003"), IsActive = true }
     ];
 
     public static IReadOnlyCollection<Product> Products { get; } =

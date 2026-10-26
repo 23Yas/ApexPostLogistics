@@ -27,6 +27,10 @@
                 <label class="form-label">Email address</label>
                 <input name="email" type="email" class="form-control" value="@Model.Email" required />
             </div>
+            <div class="col-md-12">
+                <label class="form-label">New password (leave blank to keep current)</label>
+                <input name="password" type="password" class="form-control" minlength="8" />
+            </div>
             <div class="col-md-4">
                 <label class="form-label">Role</label>
                 <select name="role" class="form-select">
