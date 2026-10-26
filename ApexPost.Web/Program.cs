@@ -52,6 +52,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy("AdministratorOnly", policy => policy.RequireRole("Administrator"));
     options.AddPolicy("BranchManagerOnly", policy => policy.RequireRole("BranchManager"));
     options.AddPolicy("SameBranchOnly", policy => policy.RequireAssertion(context =>
     {

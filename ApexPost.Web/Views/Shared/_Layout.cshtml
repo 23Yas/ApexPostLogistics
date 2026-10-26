@@ -26,6 +26,10 @@
                         <li class="nav-item"><a class="nav-link" asp-controller="Transactions" asp-action="New">New transaction</a></li>
                         <li class="nav-item"><a class="nav-link" asp-controller="Transactions" asp-action="MoneyOrder">Money order</a></li>
                         <li class="nav-item"><a class="nav-link" asp-controller="Transactions" asp-action="IdentityVerification">ID verification</a></li>
+                        @if (User.IsInRole("Administrator"))
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-controller="Staff" asp-action="Index">Staff</a></li>
+                        }
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Reports</a>
                             <ul class="dropdown-menu dropdown-menu-end">

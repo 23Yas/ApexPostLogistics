@@ -1,0 +1,61 @@
+@model List<ApexPost.Core.Domain.Staff>
+@{
+    ViewData["Title"] = "Staff management";
+}
+
+<div class="page-header mb-4">
+    <div>
+        <p class="eyebrow text-uppercase">Administration</p>
+        <h1>Staff management</h1>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">Add staff</a>
+</div>
+
+@if (TempData["SuccessMessage"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+
+<div class="panel">
+    <div class="table-wrap">
+        <table class="table modern-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Branch</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var staff in Model)
+                {
+                    <tr>
+                        <td>@staff.Name</td>
+                        <td>@staff.Email</td>
+                        <td>@staff.Role</td>
+                        <td>@staff.HomeBranch.Value</td>
+                        <td>
+                            <span class="badge @(staff.IsActive ? "bg-success" : "bg-secondary")">@(staff.IsActive ? "Active" : "Inactive")</span>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a asp-action="Edit" asp-route-id="@staff.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                                @if (staff.IsActive)
+                                {
+                                    <form asp-action="Deactivate" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@staff.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

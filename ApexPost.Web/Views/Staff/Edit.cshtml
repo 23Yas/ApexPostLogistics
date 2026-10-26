@@ -1,0 +1,62 @@
+@model ApexPost.Core.Domain.Staff
+@{
+    ViewData["Title"] = "Edit staff";
+    var branches = ViewBag.Branches as IEnumerable<ApexPost.Core.Domain.Branch> ?? Array.Empty<ApexPost.Core.Domain.Branch>();
+    var roles = ViewBag.Roles as IEnumerable<string> ?? Array.Empty<string>();
+}
+
+<div class="page-header mb-4">
+    <div>
+        <p class="eyebrow text-uppercase">Administration</p>
+        <h1>Edit staff member</h1>
+    </div>
+</div>
+
+<div class="panel">
+    <form asp-action="Edit" method="post" class="transaction-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Id" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Full name</label>
+                <input name="name" class="form-control" value="@Model.Name" required />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Email address</label>
+                <input name="email" type="email" class="form-control" value="@Model.Email" required />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Role</label>
+                <select name="role" class="form-select">
+                    @foreach (var role in roles)
+                    {
+                        <option value="@role" selected="@(Model.Role.ToString() == role)">@role</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Home branch</label>
+                <select name="homeBranch" class="form-select">
+                    @foreach (var branch in branches)
+                    {
+                        <option value="@branch.Code.Value" selected="@(Model.HomeBranch.Value == branch.Code.Value)">@branch.Name (@branch.Code.Value)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                <select name="isActive" class="form-select">
+                    <option value="true" selected="@(Model.IsActive)">Active</option>
+                    <option value="false" selected="@(!Model.IsActive)">Inactive</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">Update staff</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
