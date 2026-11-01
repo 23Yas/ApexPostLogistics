@@ -6,35 +6,78 @@
 +---------------------------+
 | ApexPost.Web              |
 | MVC controllers, views    |
-| filters, middleware      |
-| auth + routing            |
+| filters, middleware       |
+| auth, routes, policies    |
 +------------+--------------+
-			 |
-			 v
+             |
+             v
 +---------------------------+
-| ApexPost.Core             |
-| Domain entities           |
-| value objects             |
-| application services      |
-| pricing and business rules|
+| ApexPost.Core              |
+| Domain entities            |
+| value objects              |
+| application services       |
+| business rules and pricing|
 +------------+--------------+
-			 |
-			 v
+             |
+             v
 +---------------------------+
-| ApexPost.Infrastructure   |
-| JSON repositories         |
-| seed data + notifications |
+| ApexPost.Infrastructure    |
+| EF Core DbContext          |
+| repositories + unit of work|
+| migrations + seed data    |
 +---------------------------+
 ```
 
+The project keeps the same top-level architecture as the earlier Week 2 app, but the data layer is now relational and SQL Server-backed through EF Core 10.
+
 ## Domain model summary
 
-- Branch: physical retail branch with branch code, status and terminals
-- Staff: named employee with role, home branch and active state
-- Product/StockItem: product catalogue and branch-specific inventory
-- CounterTransaction: mixed basket of goods and services with totals, payment and status
-- ShippingQuote: parcel/letter service configuration
-- MoneyOrder and IdentityVerification: financial and KYC checks
+- Branch: branch identity, active state and operating context
+- Staff: staff member with role, home branch and status
+- Product: catalogue item with unit price and tax category
+- BranchStock: stock position per branch and product with quantity constraints
+- CounterTransaction: retail/service transaction with totals and payment state
+- TransactionLine: line item details, quantity and pricing
+- MoneyOrder: financial service with identity verification requirements
+- IdentityVerification: masked verification metadata for audits and compliance
+- AuditEntry: action-level audit row for correlation, user and branch context
+
+## Relational schema summary
+
+The schema is designed for a normalized and query-friendly relational model.
+
+- Branches: `Id`, `Code`, `Name`, `Region`, `OpeningHours`, `IsActive`
+- Staff: `Id`, `Name`, `Email`, `Role`, `HomeBranch`, `IsActive`
+- Products: `Id`, `Sku`, `Name`, `Category`, `UnitPrice`, `TaxCategory`
+- BranchStock: `Id`, `BranchCode`, `ProductSku`, `QuantityOnHand`, `ReorderThreshold`, `RowVersion`
+- CounterTransactions: `Id`, `BranchCode`, `CounterId`, `ClerkId`, `Status`, `Total`, `RowVersion`
+- TransactionLines: `Id`, `CounterTransactionId`, `ProductSku`, `ServiceCode`, `Quantity`, `UnitPrice`
+- MoneyOrders: `Id`, `TransactionId`, `BranchCode`, `Amount`, `Fee`, `Status`
+- IdentityVerifications: `Id`, `StaffId`, `TransactionId`, `MaskedIdentifier`, `IsVerified`
+- AuditEntries: `Id`, `StaffId`, `Role`, `BranchCode`, `Controller`, `Action`, `CorrelationId`, `ResultStatus`, `DurationMs`, `RecordedAtUtc`
+
+## ER diagram
+
+```text
+Branches 1---* Staff
+Branches 1---* BranchStock
+Products 1---* BranchStock
+Branches 1---* CounterTransactions
+CounterTransactions 1---* TransactionLines
+CounterTransactions 1---1 MoneyOrders
+CounterTransactions 1---* IdentityVerifications
+Staff 1---* IdentityVerifications
+CounterTransactions 1---* AuditEntries
+```
+
+Key constraints:
+
+- Branch code is unique
+- Product SKU is unique
+- Staff email is unique
+- Branch stock is unique per branch and product
+- Quantity, amount and status values are constrained with CHECKs
+- `BranchStock` and `CounterTransactions` have rowversion columns for concurrency
 
 ## Middleware pipeline order
 
@@ -43,7 +86,7 @@ The application registers middleware in this order:
 1. Exception handling
 2. Correlation ID generation and propagation
 3. Request timing/logging
-4. Maintenance mode guard
+4. Maintenance-mode guard
 5. Security headers
 6. HTTPS redirection
 7. Routing
@@ -53,49 +96,22 @@ The application registers middleware in this order:
 11. Authentication
 12. Authorization
 
-Why this order matters:
-
-- Exception handling must wrap the app as early as possible to protect all routes.
-- Correlation IDs are created before any downstream logic so all logs share the same trace.
-- Maintenance mode and security headers protect the app before expensive work is done.
-- Request throttling and IP checks protect protected endpoints before auth and routing logic.
-- Authentication and authorization run after route resolution so policies can be applied accurately.
+This keeps cross-cutting concerns outside the controller code while preserving the Week 2 behavior for security and traceability.
 
 ## Filters versus middleware
 
 | Concern | Type | Why |
 | --- | --- | --- |
-| Request tracing | Middleware | Applies to all HTTP requests before controller code | 
-| API-key enforcement | Middleware | Requires route metadata and runs before MVC action execution |
+| Request tracing | Middleware | Applies to every request before controller code |
+| API-key enforcement | Middleware | Uses route metadata before MVC action execution |
 | Security headers | Middleware | Must run at the boundary before response is written |
-| Audit log for actions | Action filter | Requires controller/action metadata and validated user identity |
-| Model validation | Action filter | Tied to MVC model binding and view result handling |
-| Slow action warnings | Action filter | Needs action context and execution timing |
-
-## Git branch strategy and delivery model
-
-The repository is intentionally organized using a GitFlow-style workflow so work is isolated by feature and merged in a controlled order.
-
-```text
-master
-└── develop
-    ├── feature/login
-    └── feature/ui-reports
-```
-
-Rules:
-
-- `master` is the stable release branch.
-- `develop` is the integration branch for completed work.
-- Each feature branch is created from `develop` and stays scoped to a single area.
-- Features are merged back into `develop` only after review and validation.
-- The `master` branch is updated only after `develop` has passed verification.
-
-This pattern keeps multiple developers productive without creating branch conflicts or mixing unrelated deliverables in a single pull request.
+| Audit log for actions | Action filter | Requires controller/action metadata and user identity |
+| Model validation | Action filter | Tied to MVC model binding and result handling |
+| Performance observation | Action filter | Collects action timing and route metadata |
 
 ## ADRs
 
-The project includes the following ADRs in the `docs/adr` folder:
+The project keeps the earlier Week 2 ADRs and adds the Week 3 SQL Server and EF Core ADRs in `docs/adr`:
 
 - ADR-001-hybrid-layered-architecture.md
 - ADR-002-json-persistence-for-week-2.md
@@ -103,30 +119,34 @@ The project includes the following ADRs in the `docs/adr` folder:
 - ADR-004-middleware-order-and-security.md
 - ADR-005-audit-and-correlation-tracing.md
 - ADR-006-value-objects-and-pricing-strategy.md
+- ADR-007-sql-server-and-ef-core.md
+- ADR-008-relational-schema-and-delete-behaviour.md
+- ADR-009-indexing-and-execution-plan-evidence.md
+- ADR-010-stored-procedures-vs-linq.md
+- ADR-011-repository-and-unit-of-work-boundaries.md
+- ADR-012-domain-vs-persistence-model-separation.md
+- ADR-013-concurrency-strategy-for-stock-and-transactions.md
+- ADR-014-audit-store-and-unit-of-work.md
 
 ## SOLID mapping
 
-- Single responsibility: services are focused on one concern such as pricing, staff operations or stock reporting
-- Open/closed: pricing and tax logic are centralized and can be extended without changing the domain model contract
-- Liskov substitution: repository abstractions can be replaced by different storage implementations without impacting business logic
-- Interface segregation: repository contracts separate branch, staff, product, stock and transaction responsibilities
-- Dependency inversion: the web layer depends on service interfaces and application abstractions rather than concrete JSON files
+- Single responsibility: services own a single business concern such as pricing, staff flow or report generation
+- Open/closed: tax, shipping and stock rules can be extended without changing the public interfaces
+- Liskov substitution: repository implementations can change without altering business logic consumers
+- Interface segregation: the app exposes focused repository contracts instead of broad persistence contracts
+- Dependency inversion: Web depends on interfaces and application services instead of concrete infrastructure implementations
 
-## Requirement traceability and review checklist
-
-The implementation tracks the Week 2 assignment in the following areas:
+## Requirement traceability
 
 | Requirement area | Coverage |
 | --- | --- |
-| Functional domain refactor | Branches, staff, products, inventory, shipping, money orders, verification and transactions are defined in the Core domain and application services |
-| Hybrid architecture | Core, Infrastructure and Web are separated by responsibility and dependency rules |
-| MVC front end | Login, dashboard, catalogue, transaction, shipping label, money order, verification and report views are implemented |
-| Middleware/security | Correlation ID, exception handling, timing, maintenance mode, headers, HTTPS/HSTS, API-key validation, IP filtering, rate limiting, auth, authz, CORS and health checks are configured |
-| Action filters | AuditActionFilter, ValidationFilter and PerformanceFilter provide MVC-level cross-cutting concerns |
-| Advanced C# 14 | Records, value objects, delegates, generics, pattern matching, async patterns, Task.WhenAll, ValueTask, SemaphoreSlim and custom metadata are used intentionally |
-| Testing | Unit and integration tests cover business rules, security headers, redirects, throttling and correlation ID behavior |
-| Documentation | README, DESIGN.md, ADRs and audit sample artifacts are included |
-| Branching | The repo uses a master/develop/feature workflow to keep feature work isolated and reviewer-friendly |
+| Relational schema | EF Core model and migration scripts define the core relational schema |
+| SQL reporting | Reports under `sql/` cover daily sales, low-stock, region totals, shipping and money-order queries |
+| Stored procedures | Procedure scripts exist for daily sales, low-stock reporting and stock adjustment |
+| EF Core persistence | DbContext, repository layer and UnitOfWork are implemented in Infrastructure |
+| Concurrency strategy | Rowversion and transactional patterns are part of the schema and repository design |
+| Documentation and ADRs | README, DESIGN.md and ADRs are in place and updated to the SQL Server direction |
+| Security and audit | Middleware and filters remain in place and continue to protect the app |
 
 ## Security and audit posture
 
@@ -134,27 +154,28 @@ The implementation tracks the Week 2 assignment in the following areas:
 
 | Threat | Mitigation |
 | --- | --- |
-| Brute-force login attempts | Login rate limiting and strict throttling |
-| Missing or invalid API keys | API-key middleware with constant-time comparison and 401 responses |
-| IP spoofing or unauthorised partner access | IP allowlist middleware with 403 response |
-| Request traceability loss | Correlation ID middleware and structured logging |
-| Sensitive data leakage | Audit redaction for passwords, document numbers and API secrets |
-| Cross-site scripting or clickjacking | CSP, frame-ancestors and X-Frame-Options |
-| Mixed content and insecure transport | HTTPS redirect and HSTS in non-development |
+| Brute-force login attempts | Request throttling and lockout logic |
+| Missing or invalid API keys | API-key validation middleware and 401 responses |
+| IP spoofing | Forwarded header restrictions and allowlist checks |
+| Traceability gaps | Correlation ID generation and pass-through |
+| Sensitive data leakage | Audit redaction and masked identity handling |
+| Clickjacking and XSS | CSP and frame restrictions |
+| Insecure transport | HTTPS redirection and HSTS in non-development |
 
 ### Audit model
 
-The audit log records:
+Audit entries capture:
 
 - staff identity and role
 - branch code
 - controller and action
 - correlation ID
 - result status and duration
-- route values and request metadata
+- request metadata and route context
+- optional transaction and void reason context
 
-Sensitive fields are intentionally excluded or redacted before they are persisted to the JSON audit store.
+Sensitive fields are deliberately excluded or redacted before being stored.
 
 ## Notes on implementation
 
-This Week 2 release keeps persistence in JSON files behind repository abstractions so the same domain logic can later be lifted to a database with minimal business-layer impact.
+The Week 3 work keeps the existing business logic and middleware flow intact while replacing the persistence implementation behind the same contracts. The result is a cleaner path for later production-grade SQL Server deployment without forcing a wide rewrite of the application layer.

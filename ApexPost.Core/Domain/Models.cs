@@ -97,17 +97,21 @@ public sealed class Branch
     public string OpeningHours { get; init; } = string.Empty;
     public bool IsActive { get; set; } = true;
     public List<string> Counters { get; init; } = [];
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ModifiedAtUtc { get; set; }
 }
 
 public sealed class Staff
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public string Name { get; init; } = string.Empty;
-    public string Email { get; init; } = string.Empty;
-    public string PasswordHash { get; init; } = string.Empty;
-    public RoleType Role { get; init; }
-    public BranchCode HomeBranch { get; init; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public RoleType Role { get; set; }
+    public BranchCode HomeBranch { get; set; }
     public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ModifiedAtUtc { get; set; }
 }
 
 public sealed class Product
@@ -118,6 +122,8 @@ public sealed class Product
     public ProductCategory Category { get; init; }
     public Money UnitPrice { get; init; }
     public TaxCategory TaxCategory { get; init; }
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ModifiedAtUtc { get; set; }
 }
 
 public sealed class StockItem
@@ -127,6 +133,8 @@ public sealed class StockItem
     public Sku ProductSku { get; init; }
     public int QuantityOnHand { get; set; }
     public int ReorderThreshold { get; init; } = 5;
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ModifiedAtUtc { get; set; }
 }
 
 public sealed class IdentityVerification
@@ -139,6 +147,8 @@ public sealed class IdentityVerification
     public bool IsVerified { get; init; }
     public string MaskedIdentifier { get; init; } = string.Empty;
     public DateTimeOffset VerifiedAtUtc { get; init; }
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ModifiedAtUtc { get; set; }
 }
 
 public sealed class MoneyOrder
@@ -153,6 +163,8 @@ public sealed class MoneyOrder
     public bool RequiresIdentityVerification { get; init; }
     public bool IdentityVerificationComplete { get; init; }
     public string Status { get; init; } = "Pending";
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ModifiedAtUtc { get; set; }
 }
 
 public sealed class ShippingQuote
@@ -172,6 +184,8 @@ public sealed class TransactionLine
     public int Quantity { get; init; } = 1;
     public Money UnitPrice { get; init; }
     public TaxCategory TaxCategory { get; init; }
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ModifiedAtUtc { get; set; }
     public bool IsRetailItem => ProductSku is not null;
     public bool IsService => ServiceCode is not null;
 }
@@ -189,6 +203,7 @@ public sealed class CounterTransaction
     public Money TaxTotal { get; set; }
     public Money Total { get; set; }
     public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ModifiedAtUtc { get; set; }
     public DateTimeOffset? ClosedAtUtc { get; set; }
     public string? VoidReason { get; set; }
     public string? AuditCorrelationId { get; set; }
@@ -200,4 +215,25 @@ public sealed class DomainEvent
     public DateTimeOffset OccurredAtUtc { get; init; } = DateTimeOffset.UtcNow;
     public string Message { get; init; } = string.Empty;
     public BranchCode BranchCode { get; init; }
+}
+
+public sealed class AuditEntryEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid StaffId { get; set; }
+    public string Role { get; set; } = string.Empty;
+    public string BranchCode { get; set; } = string.Empty;
+    public string Controller { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string CorrelationId { get; set; } = string.Empty;
+    public string ResultStatus { get; set; } = string.Empty;
+    public string RouteValues { get; set; } = string.Empty;
+    public double DurationMs { get; set; }
+    public DateTimeOffset RecordedAtUtc { get; set; }
+    public string Details { get; set; } = string.Empty;
+    public string RedactedFields { get; set; } = string.Empty;
+    public string? TransactionId { get; set; }
+    public string? Reason { get; set; }
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ModifiedAtUtc { get; set; }
 }

@@ -41,21 +41,12 @@ public sealed class HomeController : Controller
     {
         var branchCode = new BranchCode(User.FindFirst("BranchCode")?.Value ?? "BR-001");
 
-        var branchTask = _counterService.GetBranchAsync(branchCode, cancellationToken);
-        var lowStockTask = _reportsService.GetLowStockAsync(branchCode, cancellationToken);
-        var transactionsTask = _reportsService.GetTransactionsAsync(branchCode, cancellationToken);
-        var staffTask = _staffRepository.GetAllAsync(cancellationToken);
-        var productsTask = _productRepository.GetCachedProductsAsync(cancellationToken).AsTask();
-        var stockItemsTask = _stockRepository.GetAllAsync(cancellationToken);
-
-        await Task.WhenAll(branchTask, lowStockTask, transactionsTask, staffTask, productsTask, stockItemsTask);
-
-        var branch = await branchTask;
-        var lowStock = await lowStockTask;
-        var transactions = await transactionsTask;
-        var staff = await staffTask;
-        var products = await productsTask;
-        var stockItems = await stockItemsTask;
+        var branch = await _counterService.GetBranchAsync(branchCode, cancellationToken);
+        var lowStock = await _reportsService.GetLowStockAsync(branchCode, cancellationToken);
+        var transactions = await _reportsService.GetTransactionsAsync(branchCode, cancellationToken);
+        var staff = await _staffRepository.GetAllAsync(cancellationToken);
+        var products = await _productRepository.GetCachedProductsAsync(cancellationToken);
+        var stockItems = await _stockRepository.GetAllAsync(cancellationToken);
         var branchStock = stockItems.Where(x => x.BranchCode == branchCode).ToList();
         var salesToday = transactions.Sum(item => item.Total.Amount);
 

@@ -35,8 +35,8 @@ public static class BusinessRules
     public static decimal ApplyTax(decimal amount, TaxCategory taxCategory)
         => taxCategory switch
         {
-            TaxCategory.Standard => amount * 0.2m,
-            TaxCategory.Reduced => amount * 0.1m,
+            TaxCategory.Standard => amount * 0.15m,
+            TaxCategory.Reduced => amount * 0.05m,
             TaxCategory.Exempt => 0m,
             _ => 0m
         };

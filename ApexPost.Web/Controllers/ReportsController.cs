@@ -1,5 +1,6 @@
 namespace ApexPost.Web.Controllers;
 
+using ApexPost.Core.Application.Interfaces;
 using ApexPost.Core.Application.Services;
 using ApexPost.Core.Domain;
 using Microsoft.AspNetCore.Authorization;
@@ -9,10 +10,12 @@ using Microsoft.AspNetCore.Mvc;
 public sealed class ReportsController : Controller
 {
     private readonly ReportsService _reportsService;
+    private readonly IMoneyOrderRepository _moneyOrderRepository;
 
-    public ReportsController(ReportsService reportsService)
+    public ReportsController(ReportsService reportsService, IMoneyOrderRepository moneyOrderRepository)
     {
         _reportsService = reportsService;
+        _moneyOrderRepository = moneyOrderRepository;
     }
 
     [HttpGet]
@@ -59,15 +62,18 @@ public sealed class ReportsController : Controller
     public async Task<IActionResult> MoneyOrders(CancellationToken cancellationToken)
     {
         var branchCode = new BranchCode(User.FindFirst("BranchCode")?.Value ?? "BR-001");
-        var transactions = await _reportsService.GetTransactionsAsync(branchCode, cancellationToken);
-        var summary = transactions
-            .Select(t => new
+        var moneyOrders = await _moneyOrderRepository.GetByBranchAsync(branchCode, cancellationToken);
+        var summary = moneyOrders
+            .Select(item => new
             {
-                t.Id,
-                t.CounterId,
-                t.Status,
-                Total = t.Total.Amount,
-                CreatedAtUtc = t.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd")
+                item.Id,
+                item.Sender,
+                item.Recipient,
+                Amount = item.Amount.Amount,
+                Fee = item.Fee.Amount,
+                item.Status,
+                item.RequiresIdentityVerification,
+                item.IdentityVerificationComplete
             })
             .ToList();
 

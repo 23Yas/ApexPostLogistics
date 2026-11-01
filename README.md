@@ -1,74 +1,41 @@
-# ApexPost Counter Platform
+# ApexPost Logistics
 
-ApexPost Logistics is a national postal and retail services operator. This Week 2 solution provides a hybrid layered architecture for branch operations, transaction processing, inventory visibility, shipping logic, and role-based staff access.
+ApexPost Logistics is a retail and postal operations platform. The current implementation keeps the Week 2 business logic and security model intact while moving the durable data layer to SQL Server and EF Core 10.
 
 ## Solution structure
 
-- ApexPost.Core — domain model, value objects, business rules and application services
-- ApexPost.Infrastructure — JSON repositories, seed data and simulated integrations
-- ApexPost.Web — ASP.NET Core MVC UI and middleware/security pipeline
-- ApexPost.Tests — xUnit and WebApplicationFactory coverage
+- ApexPost.Core — domain model, value objects, pricing and business rules
+- ApexPost.Infrastructure — EF Core DbContext, repository implementations, migration setup and seed data
+- ApexPost.Web — ASP.NET Core MVC app, middleware and filters
+- ApexPost.Tests — business-rule and MVC integration tests
 
-## Branching and collaboration strategy
+The project follows a clean dependency direction:
 
-This repository follows a GitFlow-style workflow to keep development organized across multiple team members.
+Web -> Application/Interfaces -> Infrastructure -> Domain
 
-- `master` is the stable production branch.
-- `develop` is the integration branch for all completed features.
-- Feature branches are created from `develop` and merged back into `develop` only after review and validation.
-- `master` is updated only from a verified `develop` branch.
+## SQL Server setup
 
-Current branch map:
+The database for this project is named `ApexPostDb` and is intentionally created as a dedicated local database instead of a shared training database.
 
-```text
-master
-└── develop
-    ├── feature/login
-    └── feature/ui-reports
+Create it in SQL Server or LocalDB, then apply migrations:
+
+```bash
+dotnet ef database update --project ApexPost.Infrastructure/ApexPost.Infrastructure.csproj --startup-project ApexPost.Web/ApexPost.Web.csproj
 ```
 
-Current feature branches in the project:
+If you are using a local SQL Server instance, configure the connection string with user-secrets:
 
-- `feature/login` — authentication flow, cookie login/logout and role-based access
-- `feature/ui-reports` — dashboard, report screens, and presentation-layer polish
+```bash
+dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True;" --project ApexPost.Web/ApexPost.Web.csproj
+```
 
-Recommended workflow:
+For the partner integration endpoint and policy checks:
 
-1. Start from `develop`
-2. Create a feature branch for one delivery area only
-3. Commit only the work related to that feature
-4. Open a pull request into `develop`
-5. Validate the build/tests before merging
-6. Merge feature branches into `develop`
-7. Merge `develop` into `master` once the release is stable
-8. Do not commit directly to `master` or `develop` for feature work
+```bash
+dotnet user-secrets set "Integration:ApiKey" "local-placeholder-api-key" --project ApexPost.Web/ApexPost.Web.csproj
+```
 
-This keeps the team aligned and ensures each developer owns a clear feature slice without mixing unrelated work in a single branch. If more feature work is added later, use the same naming pattern: `feature/<area>` such as `feature/transactions` or `feature/audit-security`.
-
-## Requirement coverage checklist
-
-This project is intentionally scoped to the Week 2 ApexPost specification and avoids speculative or unrelated features.
-
-- Branches and counters: branch records, branch status, counter assignments, and closed-branch rules are implemented.
-- Staff roles: counter clerk, branch manager, auditor and administrator are modelled and used in authorization.
-- Retail catalogue and stock: product catalog, per-branch stock, low-stock thresholds and reporting are in place.
-- Postal and financial services: parcel/letter shipping, service levels, pricing strategy, money orders and identity verification are implemented.
-- Mixed basket transaction model: a single transaction can include retail goods and service lines, with totals, tax and status tracking.
-- Business rules enforced: insufficient stock, inactive staff, branch mismatch, money-order verification threshold, parcel weight caps, manager-only void/refund, and closed branch restrictions.
-- Reports: daily sales, low-stock, shipping volume and money-order/auditor reports are included.
-- Persistence and notifications: JSON repositories and simulated events are used behind abstractions, with no database in Week 2.
-- Advanced C# 14 usage: records/value objects, pattern matching, delegates, generic repositories, async patterns, ValueTask cache, Task.WhenAll, and SemaphoreSlim are all applied to real problems.
-- Security + audit: middleware pipeline, auth policies, API key validation, IP filtering, rate limiting, correlation IDs, audit store, redaction of sensitive values, and Problem Details responses are implemented.
-- Tests and docs: the project includes xUnit business-rule checks, MVC integration tests, README, DESIGN.md, ADRs, and an audit sample file.
-
-## Scope boundaries
-
-This Week 2 release intentionally does not introduce a database, ORM, ASP.NET Core Identity, or unrelated business modules. The design is deliberately limited to the ApexPost Week 2 requirement list so the code remains easier to extend into Database/API/Cloud weeks without carrying unnecessary complexity.
-
-## Prerequisites
-
-- .NET 10 SDK
-- A local terminal with access to the repo
+Do not commit secrets to source control. The repository must only contain fictional values.
 
 ## Run locally
 
@@ -80,50 +47,65 @@ dotnet build
 dotnet run --project ApexPost.Web/ApexPost.Web.csproj
 ```
 
-Then open:
+Then open the app in the browser at the ASP.NET Core port shown in the terminal, or use the route directly:
 
-- http://localhost:5000/Account/Login
-- or the HTTPS port shown by the ASP.NET host when run in development
+- `/Account/Login`
+- `/Home/Dashboard`
 
 ## Demo accounts
 
-Use any of the following staff emails and passwords to sign in. These are local demo credentials only and are intentionally seeded as password-hashed values in the local JSON data store.
+The seed data contains demo staff accounts for local testing.
 
-- Counter clerk: ava.reed@apexpost.local / ApexPostClerk123!
-- Branch manager: chloe.moss@apexpost.local / ApexPostManager123!
-- Auditor: daniel.price@apexpost.local / ApexPostAuditor123!
-- Administrator: ella.north@apexpost.local / ApexPostAdmin123!
+- Counter clerk: `ava.reed@apexpost.local` / `ApexPostClerk123!`
+- Branch manager: `chloe.moss@apexpost.local` / `ApexPostManager123!`
+- Auditor: `daniel.price@apexpost.local` / `ApexPostAuditor123!`
+- Administrator: `ella.north@apexpost.local` / `ApexPostAdmin123!`
 
-## API key setup
+## Required SQL artifacts
 
-For integration endpoints such as `/integration/parcel-status`, set a local secret using user-secrets:
+The repo includes the Week 3 database artifacts in the `sql` folder:
 
-```bash
-dotnet user-secrets set "Integration:ApiKey" "local-placeholder-api-key" --project ApexPost.Web/ApexPost.Web.csproj
-```
+- 01_daily_branch_sales.sql
+- 02_branches_without_sales_today.sql
+- 03_top_products_by_region.sql
+- 04_shipping_volume_by_zone_service.sql
+- 05_money_orders_and_identity_verifications.sql
+- 06_sale_transaction_example.sql
+- 07_blocking_demo.sql
+- 08_performance_baseline_queries.sql
+- 09_stored_procedures.sql
+- 10_schema_script.sql
+- 11_schema_script_with_indexes.sql
 
-You can also set `Firewall:AllowedIps` in app configuration if you want to restrict the IP allowlist for admin or partner integration routes.
+These scripts cover the reporting queries, transaction examples, blocking demonstration, schema generation, and procedure definitions required for the assignment.
 
-## Implemented features
+## Database behaviour and constraints
 
-- Branch dashboard with stock and operations overview
-- Product catalogue and stock view
-- Counter transaction creation for retail items and shipping service add-ons
-- Daily sales and low-stock reports
-- Role-based access and branch-level operations
-- Cookie authentication, correlation IDs and request timing
-- API-key validation, IP restriction, rate limiting and security headers
-- Audit action filter and JSON audit log
-- Seeded branch, staff, products and transaction sample data
+The relational model keeps the platform's Week 2 business rules intact while moving to SQL Server. Main design points:
 
-## Sample requests
+- Branches, counters, staff, products and stock are normalized for relational operations
+- `BranchStock` and `CounterTransactions` carry rowversion fields for optimistic concurrency
+- Quantity, amount and status rules are enforced with check constraints
+- Identity document storage remains masked only; full numbers are never persisted
+- Audit data is recorded in a dedicated `AuditEntries` table and can be written without breaking the business transaction
+
+## Security notes
+
+- Secrets are kept in user-secrets and environment settings
+- API keys are validated before protected endpoints run
+- IP allowlists are enforced for partner/admin routes
+- Request timing, correlation IDs and exception handling remain active
+- Audit entries redact sensitive values and avoid storing full document identifiers
+
+## Example requests
 
 ### Login
 
 ```bash
 curl -c cookies.txt -X POST "https://localhost:5001/Account/Login" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  --data "email=ava.reed@apexpost.local"
+  --data-urlencode "email=ava.reed@apexpost.local" \
+  --data-urlencode "password=ApexPostClerk123!"
 ```
 
 ### Integration status lookup
@@ -138,17 +120,14 @@ curl -H "X-API-Key: local-placeholder-api-key" "https://localhost:5001/integrati
 curl -b cookies.txt "https://localhost:5001/Home/Dashboard"
 ```
 
-## Security notes
-
-- Secrets are not committed to source control.
-- Cookies use HttpOnly and same-site protections.
-- Sensitive values are redacted from audit entries.
-- Correlation IDs are echoed in responses for traceability.
-
-## Testing
+## Validation
 
 ```bash
 dotnet test ApexPost.Tests/ApexPost.Tests.csproj --nologo
 ```
 
-The suite includes integration tests for security headers, redirects, API-key enforcement, IP blocking and correlation ID propagation.
+The current suite verifies business rules, middleware security, redirection logic, role enforcement and the core platform flow while the SQL-backed persistence layer remains behind the same application contracts.
+
+## Design documentation
+
+The project includes the design and ADR set under `DESIGN.md` and `docs/adr/` with the Week 3 schema, reporting, index and concurrency trade-offs documented alongside the earlier architecture decisions.

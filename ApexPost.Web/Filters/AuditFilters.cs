@@ -43,7 +43,9 @@ public sealed class AuditActionFilter : IAsyncActionFilter
         };
 
         var correlationId = _correlationIdAccessor.Current ?? context.HttpContext.TraceIdentifier;
-        var details = $"{controller}.{action} {routeValues}";
+        var transactionId = context.ActionArguments.TryGetValue("transactionId", out var transactionObj) && transactionObj is not null ? transactionObj.ToString() : context.RouteData.Values.TryGetValue("transactionId", out var routeTransaction) && routeTransaction is not null ? routeTransaction.ToString() : null;
+        var reason = context.ActionArguments.TryGetValue("reason", out var reasonObj) && reasonObj is not null ? reasonObj.ToString() : null;
+        var details = $"{controller}.{action} {routeValues}{(string.IsNullOrWhiteSpace(reason) ? string.Empty : $" reason={reason}")}";
         var entry = new AuditEntry(
             Guid.NewGuid(),
             staffId,
@@ -57,7 +59,9 @@ public sealed class AuditActionFilter : IAsyncActionFilter
             stopwatch.Elapsed.TotalMilliseconds,
             DateTimeOffset.UtcNow,
             details,
-            ["password", "apiKey", "documentNumber", "cardData"]);
+            ["password", "apiKey", "documentNumber", "cardData"],
+            transactionId,
+            reason);
 
         await _auditStore.AppendAsync(entry);
         _logger.LogInformation("Audit entry recorded for {Controller}.{Action} correlation {CorrelationId}.", controller, action, correlationId);

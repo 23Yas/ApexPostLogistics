@@ -14,17 +14,20 @@ public sealed class TransactionService
     private readonly ITransactionRepository _transactionRepository;
     private readonly INotificationSink _notificationSink;
     private readonly PricingService _pricingService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public TransactionService(
         IStockRepository stockRepository,
         ITransactionRepository transactionRepository,
         INotificationSink notificationSink,
-        PricingService pricingService)
+        PricingService pricingService,
+        IUnitOfWork unitOfWork)
     {
         _stockRepository = stockRepository;
         _transactionRepository = transactionRepository;
         _notificationSink = notificationSink;
         _pricingService = pricingService;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<CounterTransaction> CreateTransactionAsync(
@@ -35,6 +38,23 @@ public sealed class TransactionService
         PaymentMethod paymentMethod,
         CancellationToken cancellationToken = default)
     {
+        if (lineItems.Count == 0)
+        {
+            throw new InvalidOperationException("A transaction requires at least one line item.");
+        }
+
+        foreach (var line in lineItems)
+        {
+            if (line.ProductSku is not null)
+            {
+                var stock = await _stockRepository.GetByBranchAndSkuAsync(branchCode, line.ProductSku.Value, cancellationToken);
+                if (stock is null || stock.QuantityOnHand < line.Quantity)
+                {
+                    throw new InvalidOperationException($"Insufficient stock for SKU {line.ProductSku.Value}.");
+                }
+            }
+        }
+
         var transaction = new CounterTransaction
         {
             BranchCode = branchCode,
@@ -50,6 +70,7 @@ public sealed class TransactionService
         transaction.Total = transaction.SubTotal + transaction.TaxTotal;
 
         await _transactionRepository.AddAsync(transaction, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return transaction;
     }
 
@@ -80,13 +101,20 @@ public sealed class TransactionService
             }
 
             var stock = await _stockRepository.GetByBranchAndSkuAsync(transaction.BranchCode, line.ProductSku.Value, cancellationToken);
-            if (stock is not null)
+            if (stock is null)
             {
-                stock.QuantityOnHand -= line.Quantity;
-                await _stockRepository.UpdateAsync(stock, cancellationToken);
+                throw new InvalidOperationException($"Stock record missing for SKU {line.ProductSku.Value}.");
             }
 
-            if (stock is not null && stock.QuantityOnHand <= stock.ReorderThreshold)
+            if (stock.QuantityOnHand < line.Quantity)
+            {
+                throw new InvalidOperationException($"Insufficient stock for SKU {line.ProductSku.Value}.");
+            }
+
+            stock.QuantityOnHand -= line.Quantity;
+            await _stockRepository.UpdateAsync(stock, cancellationToken);
+
+            if (stock.QuantityOnHand <= stock.ReorderThreshold)
             {
                 await _notificationSink.PublishAsync(new DomainEvent
                 {
@@ -100,6 +128,7 @@ public sealed class TransactionService
         transaction.Status = TransactionStatus.Paid;
         transaction.ClosedAtUtc = DateTimeOffset.UtcNow;
         await _transactionRepository.UpdateAsync(transaction, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await _notificationSink.PublishAsync(new DomainEvent
         {
@@ -116,10 +145,31 @@ public sealed class TransactionService
             throw new InvalidOperationException("A void requires a reason.");
         }
 
+        if (transaction.Status == TransactionStatus.Voided || transaction.Status == TransactionStatus.Refunded)
+        {
+            throw new InvalidOperationException("This transaction has already been voided or refunded.");
+        }
+
+        foreach (var line in transaction.LineItems)
+        {
+            if (line.ProductSku is null)
+            {
+                continue;
+            }
+
+            var stock = await _stockRepository.GetByBranchAndSkuAsync(transaction.BranchCode, line.ProductSku.Value, cancellationToken);
+            if (stock is not null)
+            {
+                stock.QuantityOnHand += line.Quantity;
+                await _stockRepository.UpdateAsync(stock, cancellationToken);
+            }
+        }
+
         transaction.Status = TransactionStatus.Voided;
         transaction.VoidReason = reason;
         transaction.ClosedAtUtc = DateTimeOffset.UtcNow;
         await _transactionRepository.UpdateAsync(transaction, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await _notificationSink.PublishAsync(new DomainEvent
         {
@@ -136,10 +186,31 @@ public sealed class TransactionService
             throw new InvalidOperationException("A refund requires a reason.");
         }
 
+        if (transaction.Status == TransactionStatus.Voided || transaction.Status == TransactionStatus.Refunded)
+        {
+            throw new InvalidOperationException("This transaction has already been voided or refunded.");
+        }
+
+        foreach (var line in transaction.LineItems)
+        {
+            if (line.ProductSku is null)
+            {
+                continue;
+            }
+
+            var stock = await _stockRepository.GetByBranchAndSkuAsync(transaction.BranchCode, line.ProductSku.Value, cancellationToken);
+            if (stock is not null)
+            {
+                stock.QuantityOnHand += line.Quantity;
+                await _stockRepository.UpdateAsync(stock, cancellationToken);
+            }
+        }
+
         transaction.Status = TransactionStatus.Refunded;
         transaction.VoidReason = reason;
         transaction.ClosedAtUtc = DateTimeOffset.UtcNow;
         await _transactionRepository.UpdateAsync(transaction, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await _notificationSink.PublishAsync(new DomainEvent
         {

@@ -31,35 +31,59 @@ public abstract class JsonRepositoryBase<T> : IRepository<T> where T : class
 
     public async Task AddAsync(T entity, CancellationToken cancellationToken = default)
     {
-        var items = await LoadAsync(cancellationToken);
-        items.Add(entity);
-        await SaveAsync(items, cancellationToken);
+        await WriteLock.WaitAsync(cancellationToken);
+        try
+        {
+            var items = await LoadAsync(cancellationToken);
+            items.Add(entity);
+            await SaveAsync(items, cancellationToken);
+        }
+        finally
+        {
+            WriteLock.Release();
+        }
     }
 
     public async Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
     {
-        var items = await LoadAsync(cancellationToken);
-        for (var i = 0; i < items.Count; i++)
+        await WriteLock.WaitAsync(cancellationToken);
+        try
         {
-            if (GetId(items[i]) == GetId(entity))
+            var items = await LoadAsync(cancellationToken);
+            for (var i = 0; i < items.Count; i++)
             {
-                items[i] = entity;
-                await SaveAsync(items, cancellationToken);
-                return;
+                if (GetId(items[i]) == GetId(entity))
+                {
+                    items[i] = entity;
+                    await SaveAsync(items, cancellationToken);
+                    return;
+                }
             }
-        }
 
-        throw new InvalidOperationException("Entity not found.");
+            throw new InvalidOperationException("Entity not found.");
+        }
+        finally
+        {
+            WriteLock.Release();
+        }
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var items = await LoadAsync(cancellationToken);
-        var index = items.FindIndex(item => GetId(item) == id);
-        if (index >= 0)
+        await WriteLock.WaitAsync(cancellationToken);
+        try
         {
-            items.RemoveAt(index);
-            await SaveAsync(items, cancellationToken);
+            var items = await LoadAsync(cancellationToken);
+            var index = items.FindIndex(item => GetId(item) == id);
+            if (index >= 0)
+            {
+                items.RemoveAt(index);
+                await SaveAsync(items, cancellationToken);
+            }
+        }
+        finally
+        {
+            WriteLock.Release();
         }
     }
 
@@ -73,27 +97,47 @@ public abstract class JsonRepositoryBase<T> : IRepository<T> where T : class
             return [];
         }
 
-        var json = await File.ReadAllTextAsync(_filePath, cancellationToken);
-        if (string.IsNullOrWhiteSpace(json))
+        string json;
+        try
         {
-            return [];
+            json = await File.ReadAllTextAsync(_filePath, cancellationToken);
+        }
+        catch (IOException ex)
+        {
+            throw new InvalidOperationException($"Unable to read repository file '{_filePath}'.", ex);
         }
 
-        var items = JsonSerializer.Deserialize<List<T>>(json);
-        return items ?? [];
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new InvalidOperationException($"Repository file '{_filePath}' is empty.");
+        }
+
+        try
+        {
+            var items = JsonSerializer.Deserialize<List<T>>(json);
+            return items ?? [];
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException($"Repository file '{_filePath}' contains corrupted JSON.", ex);
+        }
     }
 
     protected async Task SaveAsync(List<T> items, CancellationToken cancellationToken)
     {
-        await WriteLock.WaitAsync(cancellationToken);
+        var json = JsonSerializer.Serialize(items, new JsonSerializerOptions { WriteIndented = true });
+        var tempFile = _filePath + $".{Guid.NewGuid():N}.tmp";
         try
         {
-            var json = JsonSerializer.Serialize(items, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(_filePath, json, cancellationToken);
+            await File.WriteAllTextAsync(tempFile, json, cancellationToken);
+            File.Move(tempFile, _filePath, overwrite: true);
         }
         finally
         {
-            WriteLock.Release();
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
         }
     }
 }
@@ -196,7 +240,47 @@ public sealed class TransactionRepository : JsonRepositoryBase<CounterTransactio
         return transactions.Where(t => t.BranchCode == branchCode).ToList();
     }
 
+    public async Task<IReadOnlyCollection<CounterTransaction>> GetByDateAsync(DateOnly date, BranchCode? branchCode = null, CancellationToken cancellationToken = default)
+    {
+        var transactions = await GetAllAsync(cancellationToken);
+        var start = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var end = date.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        var filtered = transactions.Where(t => t.CreatedAtUtc >= start && t.CreatedAtUtc <= end);
+        if (branchCode is not null)
+        {
+            filtered = filtered.Where(t => t.BranchCode == branchCode.Value);
+        }
+
+        return filtered.ToList();
+    }
+
     protected override Guid GetId(CounterTransaction item) => item.Id;
+}
+
+public sealed class MoneyOrderRepository : JsonRepositoryBase<MoneyOrder>, IMoneyOrderRepository
+{
+    public MoneyOrderRepository(string filePath) : base(filePath)
+    {
+    }
+
+    public async Task<IReadOnlyCollection<MoneyOrder>> GetByBranchAsync(BranchCode branchCode, CancellationToken cancellationToken = default)
+    {
+        var moneyOrders = await GetAllAsync(cancellationToken);
+        return moneyOrders.Where(item => item.BranchCode == branchCode).ToList();
+    }
+
+    public async Task<IReadOnlyCollection<MoneyOrder>> GetByBranchAndDateAsync(BranchCode branchCode, DateTime date, CancellationToken cancellationToken = default)
+    {
+        var moneyOrders = await GetAllAsync(cancellationToken);
+        var start = date.Date;
+        var end = start.AddDays(1).AddTicks(-1);
+        return moneyOrders
+            .Where(item => item.BranchCode == branchCode && item.CreatedAtUtc >= start && item.CreatedAtUtc <= end)
+            .ToList();
+    }
+
+    protected override Guid GetId(MoneyOrder item) => item.Id;
 }
 
 public sealed class JsonAuditStore : IAuditStore
@@ -215,11 +299,12 @@ public sealed class JsonAuditStore : IAuditStore
         await WriteLock.WaitAsync(cancellationToken);
         try
         {
-            var entries = await ReadAsync(cancellationToken);
-            var list = entries.ToList();
-            list.Add(entry);
-            var json = JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(_filePath, json, cancellationToken);
+            var line = JsonSerializer.Serialize(entry);
+            var directory = Path.GetDirectoryName(_filePath) ?? AppContext.BaseDirectory;
+            Directory.CreateDirectory(directory);
+            await using var stream = new FileStream(_filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+            await using var writer = new StreamWriter(stream);
+            await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
         }
         finally
         {
@@ -234,14 +319,38 @@ public sealed class JsonAuditStore : IAuditStore
             return [];
         }
 
-        var json = await File.ReadAllTextAsync(_filePath, cancellationToken);
-        if (string.IsNullOrWhiteSpace(json))
+        var entries = new List<AuditEntry>();
+        using var stream = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        while (true)
         {
-            return [];
+            cancellationToken.ThrowIfCancellationRequested();
+            var line = await reader.ReadLineAsync(cancellationToken);
+            if (line is null)
+            {
+                break;
+            }
+
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            try
+            {
+                var entry = JsonSerializer.Deserialize<AuditEntry>(line);
+                if (entry is not null)
+                {
+                    entries.Add(entry);
+                }
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
         }
 
-        var entries = JsonSerializer.Deserialize<List<AuditEntry>>(json);
-        return entries ?? [];
+        return entries;
     }
 }
 

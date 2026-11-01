@@ -229,8 +229,9 @@ public sealed class AllowedIpMiddleware
         }
 
         var allowedIps = (_configuration["Firewall:AllowedIps"] ?? "127.0.0.1,::1").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        var remoteIp = context.Connection.RemoteIpAddress;
-        if (remoteIp is null || !allowedIps.Any(ip => IPAddress.Parse(ip).Equals(remoteIp) || IPAddress.Parse(ip).Equals(context.Connection.LocalIpAddress)))
+        var remoteIp = GetRequestIpAddress(context);
+
+        if (remoteIp is null || !allowedIps.Any(ip => IsMatchingIp(ip, remoteIp)))
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsJsonAsync(new ProblemDetails { Title = "Forbidden", Detail = "Your IP address is not allowed.", Status = StatusCodes.Status403Forbidden });
@@ -239,11 +240,37 @@ public sealed class AllowedIpMiddleware
 
         await _next(context);
     }
+
+    private static IPAddress? GetRequestIpAddress(HttpContext context)
+    {
+        var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(forwardedFor))
+        {
+            var firstIp = forwardedFor.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)[0];
+            if (IPAddress.TryParse(firstIp, out var parsedForwarded))
+            {
+                return parsedForwarded;
+            }
+        }
+
+        return context.Connection.RemoteIpAddress;
+    }
+
+    private static bool IsMatchingIp(string allowedIp, IPAddress actualIp)
+    {
+        if (IPAddress.TryParse(allowedIp, out var parsedAllowed))
+        {
+            return parsedAllowed.Equals(actualIp);
+        }
+
+        return false;
+    }
 }
 
 public sealed class RateLimitMiddleware
 {
-    private static readonly ConcurrentDictionary<string, int> RequestCounts = new();
+    private static readonly ConcurrentDictionary<string, Queue<DateTimeOffset>> RequestCounts = new();
+    private static readonly TimeSpan Window = TimeSpan.FromSeconds(60);
     private readonly RequestDelegate _next;
 
     public RateLimitMiddleware(RequestDelegate next)
@@ -253,33 +280,67 @@ public sealed class RateLimitMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Request.Path.StartsWithSegments("/Account/Login", StringComparison.OrdinalIgnoreCase))
+        var path = context.Request.Path;
+        if (context.Request.Method == HttpMethods.Get && path.Equals("/Account/Login"))
         {
-            var key = $"{context.Connection.RemoteIpAddress}:{context.Request.Path}";
-            var current = RequestCounts.AddOrUpdate(key, 1, (_, value) => value + 1);
-            if (current > 5)
-            {
-                context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                context.Response.Headers["Retry-After"] = "60";
-                await context.Response.WriteAsJsonAsync(new ProblemDetails { Title = "Too many requests", Detail = "Login rate limit exceeded.", Status = StatusCodes.Status429TooManyRequests });
-                return;
-            }
+            await _next(context);
+            return;
         }
 
-        if (context.Request.Path.StartsWithSegments("/integration", StringComparison.OrdinalIgnoreCase))
+        var endpointKey = path.StartsWithSegments("/Account/Login", StringComparison.OrdinalIgnoreCase)
+            ? "login"
+            : path.StartsWithSegments("/integration", StringComparison.OrdinalIgnoreCase)
+                ? "integration"
+                : null;
+
+        if (endpointKey is null)
         {
-            var key = $"{context.Connection.RemoteIpAddress}:integration";
-            var current = RequestCounts.AddOrUpdate(key, 1, (_, value) => value + 1);
-            if (current > 30)
+            await _next(context);
+            return;
+        }
+
+        var remoteIp = GetClientIp(context);
+        var key = $"{remoteIp}:{endpointKey}";
+        var now = DateTimeOffset.UtcNow;
+        var queue = RequestCounts.GetOrAdd(key, _ => new Queue<DateTimeOffset>());
+
+        lock (queue)
+        {
+            while (queue.Count > 0 && now - queue.Peek() > Window)
             {
+                queue.Dequeue();
+            }
+
+            queue.Enqueue(now);
+            var limit = endpointKey == "login" ? 5 : 30;
+            if (queue.Count > limit)
+            {
+                var oldest = queue.Peek();
+                var retryAfter = Math.Max(1, (int)Math.Ceiling((Window - (now - oldest)).TotalSeconds));
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                context.Response.Headers["Retry-After"] = "60";
-                await context.Response.WriteAsJsonAsync(new ProblemDetails { Title = "Too many requests", Detail = "Partner rate limit exceeded.", Status = StatusCodes.Status429TooManyRequests });
+                context.Response.Headers["Retry-After"] = retryAfter.ToString();
+                context.Response.ContentType = "application/problem+json";
+                context.Response.WriteAsJsonAsync(new ProblemDetails { Title = "Too many requests", Detail = endpointKey == "login" ? "Login rate limit exceeded." : "Partner rate limit exceeded.", Status = StatusCodes.Status429TooManyRequests });
                 return;
             }
         }
 
         await _next(context);
+    }
+
+    private static string GetClientIp(HttpContext context)
+    {
+        var forwarded = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(forwarded))
+        {
+            var candidate = forwarded.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(candidate) && IPAddress.TryParse(candidate, out _))
+            {
+                return candidate;
+            }
+        }
+
+        return context.Connection.RemoteIpAddress is null ? "unknown" : context.Connection.RemoteIpAddress.ToString();
     }
 }
 

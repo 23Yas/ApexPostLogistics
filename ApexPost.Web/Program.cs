@@ -1,3 +1,4 @@
+using System.Net;
 using ApexPost.Core.Application.Interfaces;
 using ApexPost.Core.Application.Services;
 using ApexPost.Infrastructure;
@@ -6,14 +7,18 @@ using ApexPost.Web.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
+    options.KnownIPNetworks.Clear();
+    options.KnownIPNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+    options.KnownIPNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
+    options.KnownIPNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("192.168.0.0"), 16));
 });
 
 builder.Services.AddCors(options =>
@@ -68,13 +73,36 @@ builder.Services.AddAuthorization(options =>
     }));
 });
 
+builder.Services.AddDbContext<ApexPostDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("ApexPostDb");
+
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("ApexPostDb connection string is missing. Set it via dotnet user-secrets or the environment configuration.");
+    }
+
+    options.UseSqlServer(connectionString, sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure();
+    });
+
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
+});
+
 builder.Services.AddSingleton<CorrelationIdAccessor>();
-builder.Services.AddSingleton<IAuditStore>(_ => new JsonAuditStore(Path.Combine(AppContext.BaseDirectory, "data", "audit.json")));
-builder.Services.AddSingleton<IBranchRepository>(_ => new BranchRepository(Path.Combine(AppContext.BaseDirectory, "data", "branches.json")));
-builder.Services.AddSingleton<IStaffRepository>(_ => new StaffRepository(Path.Combine(AppContext.BaseDirectory, "data", "staff.json")));
-builder.Services.AddSingleton<IProductRepository>(_ => new ProductRepository(Path.Combine(AppContext.BaseDirectory, "data", "products.json")));
-builder.Services.AddSingleton<IStockRepository>(_ => new StockRepository(Path.Combine(AppContext.BaseDirectory, "data", "stock.json")));
-builder.Services.AddSingleton<ITransactionRepository>(_ => new TransactionRepository(Path.Combine(AppContext.BaseDirectory, "data", "transactions.json")));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IBranchRepository, EfBranchRepository>();
+builder.Services.AddScoped<IStaffRepository, EfStaffRepository>();
+builder.Services.AddScoped<IProductRepository, EfProductRepository>();
+builder.Services.AddScoped<IStockRepository, EfStockRepository>();
+builder.Services.AddScoped<ITransactionRepository, EfTransactionRepository>();
+builder.Services.AddScoped<IMoneyOrderRepository, EfMoneyOrderRepository>();
+builder.Services.AddScoped<IAuditStore, EfAuditStore>();
 builder.Services.AddSingleton<INotificationSink, SimulatedNotificationSink>();
 builder.Services.AddSingleton<IShippingRateProvider, CourierRateProvider>();
 
@@ -98,7 +126,12 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-await SeedDataBootstrap.InitializeAsync(app.Services);
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApexPostDbContext>();
+    dbContext.Database.Migrate();
+    await SeedDataBootstrap.InitializeAsync(dbContext);
+}
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

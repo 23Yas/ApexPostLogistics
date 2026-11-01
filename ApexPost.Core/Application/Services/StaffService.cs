@@ -6,10 +6,12 @@ using ApexPost.Core.Domain;
 public sealed class StaffService
 {
     private readonly IStaffRepository _staffRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public StaffService(IStaffRepository staffRepository)
+    public StaffService(IStaffRepository staffRepository, IUnitOfWork unitOfWork)
     {
         _staffRepository = staffRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public Task<IReadOnlyCollection<Staff>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -42,6 +44,7 @@ public sealed class StaffService
         }
 
         await _staffRepository.AddAsync(staff, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return staff;
     }
 
@@ -62,19 +65,16 @@ public sealed class StaffService
             }
         }
 
-        var updated = new Staff
-        {
-            Id = staff.Id,
-            Name = staff.Name,
-            Email = staff.Email,
-            PasswordHash = string.IsNullOrWhiteSpace(staff.PasswordHash) ? existing.PasswordHash : staff.PasswordHash,
-            Role = staff.Role,
-            HomeBranch = staff.HomeBranch,
-            IsActive = staff.IsActive
-        };
+        existing.Name = staff.Name;
+        existing.Email = staff.Email;
+        existing.PasswordHash = string.IsNullOrWhiteSpace(staff.PasswordHash) ? existing.PasswordHash : staff.PasswordHash;
+        existing.Role = staff.Role;
+        existing.HomeBranch = staff.HomeBranch;
+        existing.IsActive = staff.IsActive;
 
-        await _staffRepository.UpdateAsync(updated, cancellationToken);
-        return updated;
+        await _staffRepository.UpdateAsync(existing, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return existing;
     }
 
     public async Task<bool> DeactivateAsync(Guid staffId, CancellationToken cancellationToken = default)
@@ -85,17 +85,9 @@ public sealed class StaffService
             return false;
         }
 
-        var updated = new Staff
-        {
-            Id = staff.Id,
-            Name = staff.Name,
-            Email = staff.Email,
-            Role = staff.Role,
-            HomeBranch = staff.HomeBranch,
-            IsActive = false
-        };
-
-        await _staffRepository.UpdateAsync(updated, cancellationToken);
+        staff.IsActive = false;
+        await _staffRepository.UpdateAsync(staff, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
     }
 

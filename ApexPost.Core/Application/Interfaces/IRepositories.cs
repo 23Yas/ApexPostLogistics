@@ -11,6 +11,12 @@ public interface IRepository<T> where T : class
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
+public interface IUnitOfWork
+{
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+    Task ExecuteInTransactionAsync(Func<CancellationToken, Task> work, CancellationToken cancellationToken = default);
+}
+
 public interface IBranchRepository : IRepository<Branch>
 {
     Task<Branch?> GetByCodeAsync(BranchCode code, CancellationToken cancellationToken = default);
@@ -33,9 +39,20 @@ public interface IStockRepository : IRepository<StockItem>
     Task<IReadOnlyCollection<StockItem>> GetLowStockAsync(BranchCode branchCode, int threshold, CancellationToken cancellationToken = default);
 }
 
-public interface ITransactionRepository : IRepository<CounterTransaction>
+public interface ICounterTransactionRepository : IRepository<CounterTransaction>
 {
     Task<IReadOnlyCollection<CounterTransaction>> GetByBranchAsync(BranchCode branchCode, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<CounterTransaction>> GetByDateAsync(DateOnly date, BranchCode? branchCode = null, CancellationToken cancellationToken = default);
+}
+
+public interface ITransactionRepository : ICounterTransactionRepository
+{
+}
+
+public interface IMoneyOrderRepository : IRepository<MoneyOrder>
+{
+    Task<IReadOnlyCollection<MoneyOrder>> GetByBranchAsync(BranchCode branchCode, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<MoneyOrder>> GetByBranchAndDateAsync(BranchCode branchCode, DateTime date, CancellationToken cancellationToken = default);
 }
 
 public interface IAuditStore
@@ -57,4 +74,6 @@ public sealed record AuditEntry(
     double DurationMs,
     DateTimeOffset RecordedAtUtc,
     string Details,
-    string[] RedactedFields);
+    string[] RedactedFields,
+    string? TransactionId = null,
+    string? Reason = null);
