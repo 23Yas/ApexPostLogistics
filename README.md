@@ -1,133 +1,100 @@
 # ApexPost Logistics
 
-ApexPost Logistics is a retail and postal operations platform. The current implementation keeps the Week 2 business logic and security model intact while moving the durable data layer to SQL Server and EF Core 10.
+ApexPost is a retail and postal operations platform: counter sales, stock, money orders, identity verification, shipping labels and reports. This branch moves the platform from JSON files to SQL Server with EF Core 10.
 
-## Solution structure
+## Prerequisites
 
-- ApexPost.Core — domain model, value objects, pricing and business rules
-- ApexPost.Infrastructure — EF Core DbContext, repository implementations, migration setup and seed data
-- ApexPost.Web — ASP.NET Core MVC app, middleware and filters
-- ApexPost.Tests — business-rule and MVC integration tests
+- .NET 10 SDK
+- SQL Server LocalDB (installed with Visual Studio) or SQL Server Express
+- SQL Server Management Studio (for the scripts in `sql/`)
 
-The project follows a clean dependency direction:
+## 1. Set the secrets (never commit these)
 
-Web -> Application/Interfaces -> Infrastructure -> Domain
+From the repository root:
 
-## SQL Server setup
-
-The database for this project is named `ApexPostDb` and is intentionally created as a dedicated local database instead of a shared training database.
-
-Create it in SQL Server or LocalDB, then apply migrations:
-
-```bash
-dotnet ef database update --project ApexPost.Infrastructure/ApexPost.Infrastructure.csproj --startup-project ApexPost.Web/ApexPost.Web.csproj
+```
+dotnet user-secrets init --project ApexPost.Web
+dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True;" --project ApexPost.Web
+dotnet user-secrets set "Integration:ApiKey" "local-placeholder-api-key" --project ApexPost.Web
 ```
 
-If you are using a local SQL Server instance, configure the connection string with user-secrets:
+The app will not start without the connection string. Use fictional values only.
 
-```bash
-dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True;" --project ApexPost.Web/ApexPost.Web.csproj
+## 2. Create the database and schema
+
+You do not need to create `ApexPostDb` by hand. The migrations create it.
+
+```
+dotnet build ApexPostLogistics.slnx
+dotnet ef database update --project ApexPost.Infrastructure --startup-project ApexPost.Web
 ```
 
-For the partner integration endpoint and policy checks:
+To rebuild from scratch (development only):
 
-```bash
-dotnet user-secrets set "Integration:ApiKey" "local-placeholder-api-key" --project ApexPost.Web/ApexPost.Web.csproj
+```
+dotnet ef database drop --force --project ApexPost.Infrastructure --startup-project ApexPost.Web
+dotnet ef database update --project ApexPost.Infrastructure --startup-project ApexPost.Web
 ```
 
-Do not commit secrets to source control. The repository must only contain fictional values.
+To generate the idempotent schema script for review or deployment:
 
-## Run locally
-
-```bash
-dotnet restore
-
-dotnet build
-
-dotnet run --project ApexPost.Web/ApexPost.Web.csproj
+```
+dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --startup-project ApexPost.Web -o sql/10_schema_script.sql
 ```
 
-Then open the app in the browser at the ASP.NET Core port shown in the terminal, or use the route directly:
+## 3. Stored procedures
 
-- `/Account/Login`
-- `/Home/Dashboard`
+The three procedures are created by the migration `AddStoredProcedures`, so `dotnet ef database update` creates them. `sql/09_stored_procedures.sql` holds the same definitions for SSMS. Running it again is safe (`CREATE OR ALTER`).
 
-## Demo accounts
+## 4. Optional scripts
 
-The seed data contains demo staff accounts for local testing.
+| Script | Purpose |
+|---|---|
+| `sql/01` to `sql/05` | Reporting queries |
+| `sql/06` | Sale transaction example (T-SQL, transactional) |
+| `sql/07` | Blocking demonstration (two SSMS sessions) |
+| `sql/08` | Performance baseline (four workloads, with STATISTICS IO and TIME) |
+| `sql/13` | Candidate indexes, one per workload (create only after measuring) |
+| `sql/14` | Non-SARGable rewrite example |
+| `sql/15` | Adds 50,000 historical transactions for realistic volume (run once) |
+| `sql/12` | Least-privilege role for the application login (run as administrator) |
 
-- Counter clerk: `ava.reed@apexpost.local` / `ApexPostClerk123!`
-- Branch manager: `chloe.moss@apexpost.local` / `ApexPostManager123!`
-- Auditor: `daniel.price@apexpost.local` / `ApexPostAuditor123!`
-- Administrator: `ella.north@apexpost.local` / `ApexPostAdmin123!`
+## 5. Run the app
 
-## Required SQL artifacts
-
-The repo includes the Week 3 database artifacts in the `sql` folder:
-
-- 01_daily_branch_sales.sql
-- 02_branches_without_sales_today.sql
-- 03_top_products_by_region.sql
-- 04_shipping_volume_by_zone_service.sql
-- 05_money_orders_and_identity_verifications.sql
-- 06_sale_transaction_example.sql
-- 07_blocking_demo.sql
-- 08_performance_baseline_queries.sql
-- 09_stored_procedures.sql
-- 10_schema_script.sql
-- 11_schema_script_with_indexes.sql
-
-These scripts cover the reporting queries, transaction examples, blocking demonstration, schema generation, and procedure definitions required for the assignment.
-
-## Database behaviour and constraints
-
-The relational model keeps the platform's Week 2 business rules intact while moving to SQL Server. Main design points:
-
-- Branches, counters, staff, products and stock are normalized for relational operations
-- `BranchStock` and `CounterTransactions` carry rowversion fields for optimistic concurrency
-- Quantity, amount and status rules are enforced with check constraints
-- Identity document storage remains masked only; full numbers are never persisted
-- Audit data is recorded in a dedicated `AuditEntries` table and can be written without breaking the business transaction
-
-## Security notes
-
-- Secrets are kept in user-secrets and environment settings
-- API keys are validated before protected endpoints run
-- IP allowlists are enforced for partner/admin routes
-- Request timing, correlation IDs and exception handling remain active
-- Audit entries redact sensitive values and avoid storing full document identifiers
-
-## Example requests
-
-### Login
-
-```bash
-curl -c cookies.txt -X POST "https://localhost:5001/Account/Login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  --data-urlencode "email=ava.reed@apexpost.local" \
-  --data-urlencode "password=ApexPostClerk123!"
+```
+dotnet run --project ApexPost.Web
 ```
 
-### Integration status lookup
+On startup the app applies pending migrations and seeds the reference and history data once (branches, staff, products, stock, counters, zones, rates, 200 transactions, payments and shipments). Then browse to `/Account/Login`.
 
-```bash
-curl -H "X-API-Key: local-placeholder-api-key" "https://localhost:5001/integration/parcel-status"
+## 6. Demo accounts
+
+These are fictional, for local testing only.
+
+| Role | Email | Password |
+|---|---|---|
+| Counter clerk | `ava.reed@apexpost.local` | `ApexPostClerk123!` |
+| Branch manager | `chloe.moss@apexpost.local` | `ApexPostManager123!` |
+| Auditor | `daniel.price@apexpost.local` | `ApexPostAuditor123!` |
+| Administrator | `ella.north@apexpost.local` | `ApexPostAdmin123!` |
+
+## 7. Run the tests
+
+```
+dotnet test ApexPost.Tests
 ```
 
-### Dashboard
+The tests never use `ApexPostDb`. Each test class creates a database named `ApexPostTest_<guid>`, applies the migrations and drops it when finished. LocalDB must be running.
 
-```bash
-curl -b cookies.txt "https://localhost:5001/Home/Dashboard"
-```
+## 8. Project layout
 
-## Validation
+| Project | Contents |
+|---|---|
+| `ApexPost.Core` | Domain entities, value objects, application services, repository interfaces |
+| `ApexPost.Infrastructure` | `ApexPostDbContext`, entity configurations, repositories, unit of work, migrations, seeding |
+| `ApexPost.Web` | MVC controllers, views, middleware, filters, `Program.cs` (composition root) |
+| `ApexPost.Tests` | Unit tests (no database), SQL Server integration tests, web tests |
+| `sql/` | Reporting queries, stored procedures, performance scripts, least-privilege script |
+| `docs/adr/` | Architecture decision records |
 
-```bash
-dotnet test ApexPost.Tests/ApexPost.Tests.csproj --nologo
-```
-
-The current suite verifies business rules, middleware security, redirection logic, role enforcement and the core platform flow while the SQL-backed persistence layer remains behind the same application contracts.
-
-## Design documentation
-
-The project includes the design and ADR set under `DESIGN.md` and `docs/adr/` with the Week 3 schema, reporting, index and concurrency trade-offs documented alongside the earlier architecture decisions.
+See `DESIGN.md` for the entity-relationship diagram, delete behaviour and the requirement status, and `PERFORMANCE.md` for the index evidence.

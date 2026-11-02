@@ -1,101 +1,75 @@
 # Performance and execution-plan evidence
 
-## Scope
+> **Status: method and template only.** No numbers appear in this file until they are measured on your database. Every table below is empty on purpose. The brief says never to invent numbers. Fill each table from a real run, save the `.sqlplan` file next to this document, and keep the statistics output in the same folder.
 
-This repository captures the Week 3 SQL Server performance work in a small but realistic configuration. The goal is to keep the application fast without over-allocating write-heavy indexes while still supporting branch reporting and daily reconciliation.
+## 1. Method
 
-## Evidence principles
+1. Load realistic volume: `sql/15_generate_volume.sql` adds 50,000 transactions on top of the 200 seeded ones. Record the row counts before and after.
+2. Clear the plan cache and buffers only on a development machine: `DBCC FREEPROCCACHE; DBCC DROPCLEANBUFFERS;`.
+3. For each workload in `sql/08_performance_baseline_queries.sql`, run it with **Include Actual Execution Plan** on, and save the plan as `.sqlplan`. Record the `STATISTICS IO` (logical reads) and `STATISTICS TIME` (CPU time, elapsed time) output.
+4. Create one candidate index from `sql/13_candidate_indexes.sql` at a time. Run the workload again and record the same numbers.
+5. Record the write overhead: time 10,000 `INSERT`s into `CounterTransactions` with and without the index, and the storage with `EXEC sp_spaceused 'CounterTransactions';`.
+6. Keep the index only if the workload improves and the write cost is acceptable. Then add it to the EF configuration and create a migration, so the schema in the repository matches the database.
 
-- No synthetic numbers are invented.
-- When the dataset is small, SQL Server may still choose scans because the optimizer decides the seek is not justified.
-- The index strategy is therefore based on the query patterns we actually support: branch/date filters, stock checks, and service/branch lookups.
+## 2. Workloads
 
-## Baseline workloads reviewed
+| # | Workload | Query (in `sql/08`) | Filter columns | Candidate index (`sql/13`) |
+|---|---|---|---|---|
+| W1 | Low-stock report by branch | `BranchStock` where `BranchCode` and `QuantityOnHand <= 5` | BranchCode (equality), QuantityOnHand (range) | `(BranchCode, QuantityOnHand)` INCLUDE `(ProductSku)`. Equality column first, range second. The INCLUDE makes it covering, so no key lookup. |
+| W2 | Daily sales by branch and date | `CounterTransactions` where `BranchCode` and a `CreatedAtUtc` range | BranchCode (equality), CreatedAtUtc (range) | `(BranchCode, CreatedAtUtc)` INCLUDE `(Total, Status)`. Covers the daily total without touching the base table. |
+| W3 | Shipment search by zone and service level | `Shipments` where `ZoneId` and `ServiceLevel` | ZoneId, ServiceLevel (both equality) | `(ZoneId, ServiceLevel)` INCLUDE `(Price)`. Both equality columns; the order puts the more selective one first, which must be confirmed with the density values. |
+| W4 | Money-order search for auditors | `MoneyOrders` where `BranchCode` and a `CreatedAtUtc` range | BranchCode, CreatedAtUtc | `(BranchCode, CreatedAtUtc)` INCLUDE `(Amount, Status)`. The index already exists from the migration, so this measures whether the INCLUDE helps. |
 
-1. Low-stock report by branch
-2. Daily sales by branch and date
-3. Shipment search by service level
-4. Money-order search for auditors
+Key order rule used here: equality predicates first, then the range predicate, then the columns used for sorting. A range column placed before an equality column stops the seek from using the equality column.
 
-## Candidate indexes used
+## 3. Baseline (before any new index)
 
-The relational model includes the following high-value key patterns:
+| Workload | Logical reads | CPU ms | Elapsed ms | Plan shape (seek / scan / lookup) | Plan file |
+|---|---|---|---|---|---|
+| W1 | _to measure_ | _to measure_ | _to measure_ | _to measure_ | _to save_ |
+| W2 | _to measure_ | _to measure_ | _to measure_ | _to measure_ | _to save_ |
+| W3 | _to measure_ | _to measure_ | _to measure_ | _to measure_ | _to save_ |
+| W4 | _to measure_ | _to measure_ | _to measure_ | _to measure_ | _to save_ |
 
-- `(BranchCode, ProductSku)` on `BranchStock`
-- `(BranchCode, CreatedAtUtc)` on `CounterTransactions`
-- `(CounterTransactionId)` on `TransactionLines`
-- `(ServiceCode)` on `TransactionLines`
-- `(BranchCode, CreatedAtUtc)` on `MoneyOrders`
+## 4. After each candidate index
 
-These are chosen to match the dominant report filters and reduce full-table scans on the most common branch/report queries.
+| Workload | Index | Logical reads | CPU ms | Elapsed ms | Plan shape | Insert overhead (10k rows) | Storage (MB) |
+|---|---|---|---|---|---|---|---|
+| W1 | `IX_BranchStock_LowStock` | _to measure_ | | | | | |
+| W2 | `IX_CounterTransactions_BranchCode_CreatedAtUtc` (covering) | _to measure_ | | | | | |
+| W3 | `IX_Shipments_ZoneId_ServiceLevel` | _to measure_ | | | | | |
+| W4 | `IX_MoneyOrders_BranchCode_CreatedAtUtc` (covering) | _to measure_ | | | | | |
 
-## Non-SARGable predicate example
+## 5. Non-SARGable predicate
 
-This pattern is not SARGable and will usually prevent efficient seek usage:
+The predicate `WHERE YEAR(CreatedAtUtc) = 2026` applies a function to the column, so an index on `CreatedAtUtc` cannot be used for a seek. `sql/14_sargable_rewrite.sql` gives the baseline and the rewrite as a date range.
 
-```sql
-WHERE YEAR(CreatedAtUtc) = 2026
-```
+| Version | Predicate | Logical reads | CPU ms | Plan shape |
+|---|---|---|---|---|
+| Before | `YEAR(CreatedAtUtc) = 2026` | _to measure_ | | _to measure_ (expect a scan) |
+| After | `CreatedAtUtc >= '2026-01-01' AND CreatedAtUtc < '2027-01-01'` | _to measure_ | | _to measure_ (expect a seek) |
 
-The correct rewrite is a ranged comparison:
+## 6. Estimated versus actual row mismatch
 
-```sql
-WHERE CreatedAtUtc >= '2026-01-01' AND CreatedAtUtc < '2027-01-01'
-```
+Method: run the W2 query with the statistics as they are, then with `UPDATE STATISTICS dbo.CounterTransactions WITH FULLSCAN` after bulk loading. In the actual plan, compare **Estimated Number of Rows** with **Actual Number of Rows** on each operator.
 
-This lets SQL Server use the date index without applying a function to the column.
+| Run | Estimated rows | Actual rows | Ratio | Cause | Action |
+|---|---|---|---|---|---|
+| Before update statistics | _to measure_ | _to measure_ | | Stale statistics after bulk insert (expected) | |
+| After update statistics | _to measure_ | _to measure_ | | | |
 
-## Before and after plan shape summary
+Write the explanation here once measured: which operator was wrong, why the optimizer chose the plan it did, and what changed after the statistics update.
 
-| Workload | Baseline shape | Candidate index shape | Practical result |
-| --- | --- | --- | --- |
-| Low-stock by branch | Full scan or branch-level scan on `BranchStock` in a small dataset | Seek on `(BranchCode, QuantityOnHand)` / `(BranchCode, ProductSku)` | Better branch-targeted lookup with lower row traffic |
-| Daily sales by branch/date | Filter on `BranchCode` and date can remain broad on a tiny table | Seek on `(BranchCode, CreatedAtUtc)` | Excellent for real branch reporting workloads |
-| Service-level shipment search | Join plus service filter may widen the row set | Seek on `TransactionLines(ServiceCode)` or join-friendly composite index | More efficient if service filter is common |
-| Money-order auditor search | Date/branch filter can scan a wider table | Seek on `(BranchCode, CreatedAtUtc)` | Keeps reporting localized to a branch and date |
+## 7. Generated SQL samples (`ToQueryString`)
 
-A small dataset may still produce scans; that is not a hidden issue, it is expected SQL Server behaviour when the optimizer decides the row count is too low to justify a seek.
+Capture each query with `query.ToQueryString()` in a development build, then paste the output below. These are the three queries the brief asks for.
 
-## Generated SQL samples
+| Query | Generated SQL |
+|---|---|
+| Daily sales for a branch and date range | _paste from `ToQueryString()`_ |
+| Stock lookup for a sale (`GetByBranchAndSkuAsync`) | _paste_ |
+| Low-stock list (`GetLowStockAsync`) | _paste_ |
 
-The application emits parameterized SQL and these are representative examples of the generated patterns:
+## 8. Conclusions
 
-```sql
-SELECT [b].[Id], [b].[Code], [b].[Name]
-FROM [Branches] AS [b]
-WHERE [b].[Code] = @__code_0
-```
-
-```sql
-SELECT [t0].[Id], [t0].[BranchCode], [t0].[CreatedAtUtc], [t0].[Total]
-FROM [CounterTransactions] AS [t0]
-WHERE [t0].[BranchCode] = @__branchCode_0
-  AND [t0].[CreatedAtUtc] >= @__start_1
-  AND [t0].[CreatedAtUtc] < @__end_2
-ORDER BY [t0].[CreatedAtUtc]
-```
-
-```sql
-SELECT [b].[Id], [b].[BranchCode], [b].[ProductSku], [b].[QuantityOnHand]
-FROM [BranchStock] AS [b]
-WHERE [b].[BranchCode] = @__branchCode_0
-  AND [b].[QuantityOnHand] <= @__threshold_1
-ORDER BY [b].[ProductSku]
-```
-
-## Index trade-offs
-
-- Composite indexes on branch/date patterns improve the major reporting queries.
-- Additional indexes on write-heavy tables raise insert/update overhead, so we keep them focused and intentional.
-- The design avoids excessive indexing because the app is not a massive analytical warehouse; it is a branch operations platform with a moderate transaction volume.
-
-## Conclusion
-
-The performance strategy is deliberately conservative and evidence-based:
-
-- match the index to the dominant filter order
-- avoid non-SARGable predicates
-- keep the smallest set of composite indexes that supports daily reporting and low-stock checks
-- accept that tiny datasets may still show scans because SQL Server optimizes for cost, not for the human expectation of a seek
-
-This approach stays honest and avoids inventing plan results that cannot be reproduced in a small environment.
+Written after measurement only. For each workload: which index was kept, why, and the trade-off in write cost and storage. Record any workload that stayed a scan, and explain why. Small tables can legitimately scan, because the optimizer chooses a scan when a seek would not be cheaper.

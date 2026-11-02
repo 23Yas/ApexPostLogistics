@@ -48,7 +48,8 @@ BEGIN
 	INNER JOIN Products p ON p.Sku = bs.ProductSku
 	WHERE bs.QuantityOnHand <= @Threshold
 	  AND (@BranchCode IS NULL OR bs.BranchCode = @BranchCode)
-	ORDER BY bs.BranchCode, bs.ProductSku;
+		ORDER BY bs.BranchCode, bs.ProductSku
+	OPTION (RECOMPILE);
 END;
 GO
 

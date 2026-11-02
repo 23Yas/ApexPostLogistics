@@ -1,6 +1,7 @@
 USE ApexPostDb;
 GO
 
+-- Daily branch sales split by retail and services. HAVING drops days with no value.
 SELECT
 	t.BranchCode,
 	CAST(t.CreatedAtUtc AS date) AS SaleDate,
@@ -8,6 +9,8 @@ SELECT
 	SUM(CASE WHEN l.ServiceCode IS NOT NULL THEN l.Quantity * l.UnitPrice ELSE 0 END) AS ServiceSales
 FROM CounterTransactions t
 INNER JOIN TransactionLines l ON l.CounterTransactionId = t.Id
+WHERE t.Status = 'Paid'
 GROUP BY t.BranchCode, CAST(t.CreatedAtUtc AS date)
+HAVING SUM(l.Quantity * l.UnitPrice) > 0
 ORDER BY SaleDate, t.BranchCode;
 GO

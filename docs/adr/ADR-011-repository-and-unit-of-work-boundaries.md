@@ -1,20 +1,22 @@
-# ADR 011: Repository and Unit of Work boundaries
+# ADR 011: Repository and unit-of-work boundaries
 
 - Status: Accepted
-- Date: 2026-11-01
+- Date: 2026-11-02
 
 ## Context
 
-The application needs a consistent persistence boundary without leaking database details into the domain or controller layer.
+Writes must be consistent and committed once per use case. Reads for reports must be fast and must not load entities they do not need.
 
 ## Decision
 
-Use the repository pattern for aggregate-level persistence and the Unit of Work for transaction coordination. Repositories stage changes but never call `SaveChangesAsync` directly. The unit of work owns the transaction boundary and commit timing.
-
-This keeps the app aligned with the earlier Week 2 architecture and enables EF Core to replace the storage implementation without changing the public application contracts.
+- **Writes** go through aggregate repositories (`IStockRepository`, `ICounterTransactionRepository`, `IPaymentRepository`, `IIdentityVerificationRepository`, `IStaffRepository`, `IBranchRepository`, `IProductRepository`). Repositories stage changes. `IUnitOfWork.SaveChangesAsync` is the only commit, once per use case.
+- **Reads for screens and reports** may use `AsNoTracking()` projections, directly or through a query service. Read-only projections are where a DbContext is used directly, because they cannot change state.
+- **No repository returns `IQueryable`.** Callers cannot compose queries against the database from outside the persistence layer.
+- **Stock reads on a write path are tracked** (`EfStockRepository.GetByBranchAndSkuAsync`), so the rowversion is loaded and the concurrency check works.
+- **The audit store** uses its own context (ADR-014), so it sits outside this boundary on purpose.
 
 ## Consequences
 
-- Business logic remains decoupled from storage details
-- The same application interfaces can be implemented with either file-based or SQL-backed persistence
-- One commit per use case retains domain and transaction clarity
+- Reports can be written as projections without new repository methods for each report.
+- The generic `IRepository<T>` still exposes `GetAll` and `Delete`. These should be narrowed to aggregate-specific methods in the next round.
+- Some controllers still call services that read through repositories directly. Those reads are acceptable only when they are AsNoTracking projections.

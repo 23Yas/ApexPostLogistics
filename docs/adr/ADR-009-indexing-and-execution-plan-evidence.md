@@ -1,26 +1,23 @@
 # ADR 009: Indexing and execution-plan evidence
 
-- Status: Accepted
-- Date: 2026-11-01
+- Status: Proposed. Becomes Accepted when the measurements in PERFORMANCE.md are filled in.
+- Date: 2026-11-02
 
 ## Context
 
-Branch reports, low-stock checks and transaction lookups are the dominant database read patterns. The database must avoid broad scans without creating excessive write overhead.
+Four workloads dominate reads: the low-stock report, daily sales, shipment search and money-order search for auditors. Every index adds write cost and storage, so each one must be justified by a measurement.
 
 ## Decision
 
-Use a narrow set of composite indexes to support the most common access patterns, especially branch/date and branch/product filters.
+Index only what the measurements justify. Candidates and their key-order reasons are in PERFORMANCE.md section 2 and `sql/13_candidate_indexes.sql`. The key-order rule is: equality predicates first, then the range predicate, then sort columns. INCLUDE columns are added only when they make the index covering for a measured workload.
 
-The main strategy is:
-
-- `(BranchCode, CreatedAtUtc)` for daily sales and money-order reporting
-- `(BranchCode, ProductSku)` for branch stock lookups
-- service and transaction-key indexes for join-heavy transaction queries
-
-The index design is intentionally conservative, because write amplification is real and the app is not a large warehouse workload.
+Decision criteria for keeping an index:
+1. The workload's logical reads or elapsed time drop by a clear margin on the volume loaded by `sql/15`.
+2. The insert overhead measured on 10,000 rows is acceptable for a branch operations system.
+3. The index is added to the EF configuration and a migration, so the schema in the repository matches.
 
 ## Consequences
 
-- Better real-world reporting performance for branch and stock workloads
-- Lower risk of unbounded scans on the dominant access paths
-- More deliberate trade-offs around write cost and storage
+- Indexes not kept are dropped, and the rationale is recorded in PERFORMANCE.md.
+- A non-SARGable predicate (`YEAR(column)`) is rewritten as a range, because no index can serve it as written.
+- Until the measurements are in, this ADR stays Proposed. The existing migration indexes are the current, unmeasured choice.

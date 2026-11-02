@@ -99,30 +99,30 @@ public sealed class WebIntegrationTests : IClassFixture<CustomWebApplicationFact
     }
 }
 
-public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
-{
-    private static string _allowedIps = "127.0.0.1,::1";
+//public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
+//{
+//    private static string _allowedIps = "127.0.0.1,::1";
 
-    public CustomWebApplicationFactory()
-    {
-    }
+//    public CustomWebApplicationFactory()
+//    {
+//    }
 
-    public static void SetAllowedIps(string allowedIps)
-    {
-        _allowedIps = allowedIps;
-    }
+//    public static void SetAllowedIps(string allowedIps)
+//    {
+//        _allowedIps = allowedIps;
+//    }
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseEnvironment("Development");
-        builder.ConfigureAppConfiguration((_, configurationBuilder) =>
-        {
-            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Firewall:AllowedIps"] = _allowedIps,
-                ["Integration:ApiKey"] = "local-placeholder-api-key",
-                ["AppSettings:MaintenanceMode"] = "false"
-            });
-        });
-    }
-}
+//    protected override void ConfigureWebHost(IWebHostBuilder builder)
+//    {
+//        builder.UseEnvironment("Development");
+//        builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+//        {
+//            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+//            {
+//                ["Firewall:AllowedIps"] = _allowedIps,
+//                ["Integration:ApiKey"] = "local-placeholder-api-key",
+//                ["AppSettings:MaintenanceMode"] = "false"
+//            });
+//        });
+//    }
+//}
