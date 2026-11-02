@@ -23,7 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ApexPost.Core\ApexPost.Core.csproj" />
+    <ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
+    <ProjectReference Include="..\ApexPost.Core\ApexPost.Domain.csproj" />
   </ItemGroup>
 
 </Project>

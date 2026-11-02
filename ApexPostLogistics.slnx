@@ -1,6 +1,7 @@
-﻿<Solution>
-  <Project Path="ApexPost.Core/ApexPost.Core.csproj" />
+<Solution>
+  <Project Path="ApexPost.Application/ApexPost.Application.csproj" Id="30d56e61-a3a1-4434-9fa0-76ba4b7f60c4" />
+  <Project Path="ApexPost.Core/ApexPost.Domain.csproj" />
   <Project Path="ApexPost.Infrastructure/ApexPost.Infrastructure.csproj" />
-  <Project Path="ApexPost.Web/ApexPost.Web.csproj" />
   <Project Path="ApexPost.Tests/ApexPost.Tests.csproj" />
+  <Project Path="ApexPost.Web/ApexPost.Web.csproj" />
 </Solution>

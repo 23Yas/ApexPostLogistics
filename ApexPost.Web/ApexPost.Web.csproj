@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ApexPost.Core\ApexPost.Core.csproj" />
+    <ProjectReference Include="..\ApexPost.Core\ApexPost.Domain.csproj" />
     <ProjectReference Include="..\ApexPost.Infrastructure\ApexPost.Infrastructure.csproj" />
   </ItemGroup>
 

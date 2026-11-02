@@ -1,6 +1,7 @@
-﻿namespace ApexPost.Core.Application.Interfaces;
+﻿using ApexPost.Core.Domain;
 
-using ApexPost.Core.Domain;
+namespace ApexPost.Core.Application.Interfaces;
+
 
 // ---- Write-side repositories (stage only, never SaveChanges) -----------------------------------
 
