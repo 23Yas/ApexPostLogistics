@@ -73,10 +73,9 @@ public sealed class CheckoutService
         var events = new List<DomainEvent>();
         foreach (var (stock, quantity) in stockRows)
         {
-            stock.QuantityOnHand -= quantity;
+            stock.Remove(quantity);
             await _stockRepository.UpdateAsync(stock, cancellationToken);
-
-            if (stock.QuantityOnHand <= stock.ReorderThreshold)
+            if (stock.IsLow)
             {
                 events.Add(new DomainEvent
                 {

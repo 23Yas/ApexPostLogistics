@@ -133,6 +133,34 @@ public sealed class StockItem
     public Sku ProductSku { get; init; }
     public int QuantityOnHand { get; set; }
     public int ReorderThreshold { get; init; } = 5;
+
+
+    public bool IsLow => QuantityOnHand <= ReorderThreshold;
+
+    public void Remove(int quantity)
+    {
+        if (quantity <= 0)
+        {
+            throw new DomainException("Quantity to remove must be at least 1.");
+        }
+
+        if (quantity > QuantityOnHand)
+        {
+            throw new DomainException($"Insufficient stock for SKU {ProductSku}: {QuantityOnHand} on hand, {quantity} requested.");
+        }
+
+        QuantityOnHand -= quantity;
+    }
+
+    public void Add(int quantity)
+    {
+        if (quantity <= 0)
+        {
+            throw new DomainException("Quantity to add must be at least 1.");
+        }
+
+        QuantityOnHand += quantity;
+    }
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ModifiedAtUtc { get; set; }
 }
@@ -163,6 +191,10 @@ public sealed class MoneyOrder
     public bool RequiresIdentityVerification { get; init; }
     public bool IdentityVerificationComplete { get; init; }
     public string Status { get; init; } = "Pending";
+
+    public const decimal IdentityVerificationThreshold = 1500m;
+
+    public bool NeedsIdentityVerification() => Amount.Amount > IdentityVerificationThreshold;
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ModifiedAtUtc { get; set; }
 }
@@ -207,6 +239,23 @@ public sealed class CounterTransaction
     public DateTimeOffset? ClosedAtUtc { get; set; }
     public string? VoidReason { get; set; }
     public string? AuditCorrelationId { get; set; }
+
+    public void AddLine(TransactionLine line)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+
+        if (Status != TransactionStatus.Open)
+        {
+            throw new DomainException("Lines can only be added to an open transaction.");
+        }
+
+        if (line.Quantity <= 0)
+        {
+            throw new DomainException("Every line must have a quantity of at least 1.");
+        }
+
+        LineItems.Add(line);
+    }
 }
 
 public sealed class DomainEvent
