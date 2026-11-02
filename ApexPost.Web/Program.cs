@@ -103,6 +103,10 @@ builder.Services.AddScoped<IStockRepository, EfStockRepository>();
 builder.Services.AddScoped<ITransactionRepository, EfTransactionRepository>();
 builder.Services.AddScoped<IMoneyOrderRepository, EfMoneyOrderRepository>();
 builder.Services.AddScoped<IAuditStore, EfAuditStore>();
+builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();
+builder.Services.AddScoped<IIdentityVerificationRepository, EfIdentityVerificationRepository>();
+builder.Services.AddScoped<IReportQueryService, EfReportQueryService>();
+builder.Services.AddScoped<IStockAdjustmentService, EfStockAdjustmentService>();
 builder.Services.AddSingleton<INotificationSink, SimulatedNotificationSink>();
 builder.Services.AddSingleton<IShippingRateProvider, CourierRateProvider>();
 
@@ -110,6 +114,7 @@ builder.Services.AddScoped<CounterService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<ReportsService>();
 builder.Services.AddScoped<TransactionService>();
+builder.Services.AddScoped<CheckoutService>();
 builder.Services.AddScoped<StaffService>();
 
 var app = builder.Build();

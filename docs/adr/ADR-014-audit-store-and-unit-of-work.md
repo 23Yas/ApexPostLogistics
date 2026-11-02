@@ -1,20 +1,18 @@
 # ADR 014: Audit store and unit-of-work interaction
 
-- Status: Accepted
-- Date: 2026-11-01
+- Status: Accepted (replaces the earlier draft of this ADR)
+- Date: 2026-11-02
 
 ## Context
 
-Audit logs are important for traceability, but they must not silently break the business transaction. A failed stock or transaction write should not leave an inconsistent or misleading audit trail.
+Every controller action needs an audit row, including failed attempts. An audit problem must never block a sale, and a rolled-back sale must not take its audit trail with it.
 
 ## Decision
 
-The audit store writes through the same EF DbContext and participates in the same request-scoped unit-of-work boundary. This makes the write path consistent and prevents the audit row from being persisted independently from the business event.
-
-The audit entry is treated as an append-only operational record, not as a stand-alone business action.
+`EfAuditStore` writes through its own short-lived `ApexPostDbContext`, with its own `SaveChangesAsync`. It is NOT part of the request's unit of work. Failures are logged at Error level and not rethrown.
 
 ## Consequences
 
-- Better consistency between business writes and operational traceability
-- Less risk of audit rows describing transactions that never persisted
-- Clearer operational review and incident investigation
+- An audit row can exist for an action whose business transaction rolled back. This is intended: the row records the attempt, with its `ResultStatus`.
+- If the database is down, the audit row can be lost. That is logged. We accept this for availability; if a regulator later requires atomic audit, revisit with an outbox table.
+- No distributed transaction is needed, and business commits stay one `SaveChangesAsync` per use case.

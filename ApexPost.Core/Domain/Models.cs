@@ -154,7 +154,7 @@ public sealed class IdentityVerification
 public sealed class MoneyOrder
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public Guid TransactionId { get; init; }
+    public Guid? TransactionId { get; init; }
     public BranchCode BranchCode { get; init; }
     public Money Amount { get; init; }
     public string Sender { get; init; } = string.Empty;

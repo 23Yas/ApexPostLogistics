@@ -12,6 +12,7 @@ public sealed class TransactionsController : Controller
 {
     private readonly CounterService _counterService;
     private readonly TransactionService _transactionService;
+    private readonly CheckoutService _checkoutService;
     private readonly ITransactionRepository _transactionRepository;
     private readonly IMoneyOrderRepository _moneyOrderRepository;
     private readonly IProductRepository _productRepository;
@@ -21,6 +22,7 @@ public sealed class TransactionsController : Controller
     public TransactionsController(
         CounterService counterService,
         TransactionService transactionService,
+        CheckoutService checkoutService,
         ITransactionRepository transactionRepository,
         IMoneyOrderRepository moneyOrderRepository,
         IProductRepository productRepository,
@@ -29,6 +31,7 @@ public sealed class TransactionsController : Controller
     {
         _counterService = counterService;
         _transactionService = transactionService;
+        _checkoutService = checkoutService;
         _transactionRepository = transactionRepository;
         _moneyOrderRepository = moneyOrderRepository;
         _productRepository = productRepository;
@@ -257,8 +260,16 @@ public sealed class TransactionsController : Controller
         }
 
         var payment = Enum.TryParse<PaymentMethod>(paymentMethod, true, out var parsedPayment) ? parsedPayment : PaymentMethod.Card;
-        var transaction = await _transactionService.CreateTransactionAsync(branchCode, string.IsNullOrWhiteSpace(counterId) ? "C1" : counterId, clerkId, lineItems, payment, cancellationToken);
-        await _transactionService.CompleteTransactionAsync(transaction, cancellationToken);
+        CounterTransaction transaction;
+        try
+        {
+            transaction = await _checkoutService.CheckoutAsync(branchCode, string.IsNullOrWhiteSpace(counterId) ? "C1" : counterId, clerkId, lineItems, payment, cancellationToken);
+        }
+        catch (DomainException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+            return RedirectToAction(nameof(New));
+        }
 
         TempData["SuccessMessage"] = $"Transaction {transaction.Id} recorded for {product.Name}.";
         return RedirectToAction(nameof(New));

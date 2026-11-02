@@ -3,6 +3,7 @@ namespace ApexPost.Infrastructure;
 using ApexPost.Core.Application.Interfaces;
 using ApexPost.Core.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 public sealed class UnitOfWork : IUnitOfWork
 {
@@ -18,24 +19,23 @@ public sealed class UnitOfWork : IUnitOfWork
 
     public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> work, CancellationToken cancellationToken = default)
     {
+        // Already inside a caller-owned transaction: just participate.
         if (_dbContext.Database.CurrentTransaction is not null)
         {
             await work(cancellationToken);
             return;
         }
 
-        using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-        try
+        // EnableRetryOnFailure() is on, so a user-initiated transaction MUST run inside the execution strategy.
+        // The whole block is re-run on a transient failure; 'work' must therefore be safe to repeat.
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
             await work(cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
+            await transaction.CommitAsync(cancellationToken);   // disposing without commit rolls back
+        });
     }
 }
 
@@ -176,8 +176,10 @@ public sealed class EfStockRepository : EfRepository<StockItem>, IStockRepositor
     {
     }
 
+    // Tracked on purpose: callers mutate QuantityOnHand and the loaded RowVersion is the concurrency token.
+    // (With AsNoTracking the token is never loaded and the lost-update check does nothing.)
     public async Task<StockItem?> GetByBranchAndSkuAsync(BranchCode branchCode, Sku sku, CancellationToken cancellationToken = default)
-        => await DbContext.StockItems.AsNoTracking().FirstOrDefaultAsync(item => item.BranchCode == branchCode && item.ProductSku == sku, cancellationToken);
+        => await DbContext.StockItems.FirstOrDefaultAsync(item => item.BranchCode == branchCode && item.ProductSku == sku, cancellationToken);
 
     public async Task<IReadOnlyCollection<StockItem>> GetLowStockAsync(BranchCode branchCode, int threshold, CancellationToken cancellationToken = default)
         => await DbContext.StockItems.AsNoTracking().Where(item => item.BranchCode == branchCode && item.QuantityOnHand <= threshold).ToListAsync(cancellationToken);
@@ -236,42 +238,66 @@ public sealed class EfMoneyOrderRepository : EfRepository<MoneyOrder>, IMoneyOrd
     }
 }
 
+public sealed class EfPaymentRepository : EfRepository<Payment>, IPaymentRepository
+{
+    public EfPaymentRepository(ApexPostDbContext dbContext)
+        : base(dbContext)
+    {
+    }
+}
+
+/// <summary>
+/// Writes audit rows with its OWN short-lived DbContext (own connection, own SaveChanges), so an audit
+/// failure can never break the business transaction and a rolled-back business action still leaves an
+/// audit trail. Failures are logged, not thrown. See ADR-014.
+/// </summary>
 public sealed class EfAuditStore : IAuditStore
 {
-    private readonly ApexPostDbContext _dbContext;
+    private readonly DbContextOptions<ApexPostDbContext> _options;
+    private readonly ILogger<EfAuditStore> _logger;
 
-    public EfAuditStore(ApexPostDbContext dbContext)
+    public EfAuditStore(DbContextOptions<ApexPostDbContext> options, ILogger<EfAuditStore> logger)
     {
-        _dbContext = dbContext;
+        _options = options;
+        _logger = logger;
     }
 
     public async Task AppendAsync(AuditEntry entry, CancellationToken cancellationToken = default)
     {
-        _dbContext.AuditEntries.Add(new AuditEntryEntity
+        try
         {
-            Id = entry.Id,
-            StaffId = entry.StaffId,
-            Role = entry.Role,
-            BranchCode = entry.BranchCode,
-            Controller = entry.Controller,
-            Action = entry.Action,
-            CorrelationId = entry.CorrelationId,
-            ResultStatus = entry.ResultStatus,
-            RouteValues = entry.RouteValues,
-            DurationMs = entry.DurationMs,
-            RecordedAtUtc = entry.RecordedAtUtc,
-            Details = entry.Details,
-            RedactedFields = string.Join(';', entry.RedactedFields),
-            TransactionId = entry.TransactionId,
-            Reason = entry.Reason
-        });
+            await using var auditContext = new ApexPostDbContext(_options);
+            auditContext.AuditEntries.Add(new AuditEntryEntity
+            {
+                Id = entry.Id,
+                StaffId = entry.StaffId,
+                Role = entry.Role,
+                BranchCode = entry.BranchCode,
+                Controller = entry.Controller,
+                Action = entry.Action,
+                CorrelationId = entry.CorrelationId,
+                ResultStatus = entry.ResultStatus,
+                RouteValues = entry.RouteValues,
+                DurationMs = entry.DurationMs,
+                RecordedAtUtc = entry.RecordedAtUtc,
+                Details = entry.Details,
+                RedactedFields = string.Join(';', entry.RedactedFields),
+                TransactionId = entry.TransactionId,
+                Reason = entry.Reason
+            });
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+            await auditContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Audit write failed for {Controller}.{Action} (correlation {CorrelationId}).", entry.Controller, entry.Action, entry.CorrelationId);
+        }
     }
 
     public async Task<IReadOnlyCollection<AuditEntry>> ReadAsync(CancellationToken cancellationToken = default)
     {
-        var rows = await _dbContext.AuditEntries.AsNoTracking().ToListAsync(cancellationToken);
+        await using var readContext = new ApexPostDbContext(_options);
+        var rows = await readContext.AuditEntries.AsNoTracking().ToListAsync(cancellationToken);
         return rows.Select(row => new AuditEntry(
             row.Id,
             row.StaffId,

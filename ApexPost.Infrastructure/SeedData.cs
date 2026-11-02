@@ -101,7 +101,7 @@ public static class SeedData
             .GroupBy(staff => staff.HomeBranch)
             .ToDictionary(group => group.Key, group => group.Select(staff => staff.Id).ToArray());
 
-        for (var i = 0; i < 40; i++)
+        for (var i = 0; i < 200; i++)
         {
             var branchCode = branchCodes[i % branchCodes.Length];
             var clerkIds = branchStaff.TryGetValue(branchCode, out var ids) ? ids : [Guid.Empty];
@@ -120,12 +120,13 @@ public static class SeedData
                 Status = status,
                 LineItems =
                 [
-                    new TransactionLine { Description = "Retail basket", ProductSku = new Sku($"SKU-{1000 + (i % 24)}"), Quantity = 1 + (i % 3), UnitPrice = new Money(subtotal / 3), TaxCategory = TaxCategory.Standard },
+                    new TransactionLine { Description = "Retail basket", ProductSku = new Sku($"SKU-{1001 + (i % 24)}"), Quantity = 1 + (i % 3), UnitPrice = new Money(subtotal / 3), TaxCategory = TaxCategory.Standard },
                     new TransactionLine { Description = "Shipping service", ServiceCode = serviceCode, Quantity = 1, UnitPrice = new Money(12.50m + (i % 5) * 2.5m), TaxCategory = TaxCategory.Standard }
                 ],
                 SubTotal = new Money(subtotal),
                 TaxTotal = new Money(subtotal * 0.15m),
                 Total = new Money(subtotal * 1.15m),
+                CreatedAtUtc = DateTimeOffset.UtcNow.AddDays(-(i % 12) - 1),
                 ClosedAtUtc = DateTimeOffset.UtcNow.AddDays(-(i % 12) - 1),
                 VoidReason = status == TransactionStatus.Voided ? "Customer requested cancellation" : null
             });
