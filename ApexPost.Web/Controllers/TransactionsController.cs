@@ -19,6 +19,9 @@ public sealed class TransactionsController : Controller
     private readonly IStockRepository _stockRepository;
     private readonly PricingService _pricingService;
 
+    private readonly IIdentityVerificationRepository _identityVerificationRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
     public TransactionsController(
         CounterService counterService,
         TransactionService transactionService,
@@ -27,7 +30,9 @@ public sealed class TransactionsController : Controller
         IMoneyOrderRepository moneyOrderRepository,
         IProductRepository productRepository,
         IStockRepository stockRepository,
-        PricingService pricingService)
+                PricingService pricingService,
+        IIdentityVerificationRepository identityVerificationRepository,
+        IUnitOfWork unitOfWork)
     {
         _counterService = counterService;
         _transactionService = transactionService;
@@ -37,6 +42,8 @@ public sealed class TransactionsController : Controller
         _productRepository = productRepository;
         _stockRepository = stockRepository;
         _pricingService = pricingService;
+        _identityVerificationRepository = identityVerificationRepository;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpGet]
@@ -163,8 +170,22 @@ public sealed class TransactionsController : Controller
             return View();
         }
 
-        TempData["SuccessMessage"] = $"Identity verification recorded for {customerName ?? "customer"}: {documentType} / {maskedIdentifier}.";
-        return RedirectToAction(nameof(IdentityVerification));
+        var staffId = Guid.TryParse(User.FindFirst("StaffId")?.Value, out var parsedStaffId) ? parsedStaffId : Guid.Empty;
+        var verification = new IdentityVerification
+        {
+            StaffId = staffId,
+            TransactionId = Guid.Empty,
+            BranchCode = branchCode,
+            DocumentType = documentType.Trim(),
+            IsVerified = true,
+            MaskedIdentifier = maskedIdentifier.Trim(),
+            VerifiedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        await _identityVerificationRepository.AddAsync(verification, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        TempData["SuccessMessage"] = $"Identity verification recorded for {customerName ?? "customer"}: {documentType} / {maskedIdentifier}."; return RedirectToAction(nameof(IdentityVerification));
     }
 
     [HttpGet("LabelPreview")]

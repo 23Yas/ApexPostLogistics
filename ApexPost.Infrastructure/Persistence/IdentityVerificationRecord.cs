@@ -25,7 +25,7 @@ public static class IdentityVerificationMapper
     {
         Id = domain.Id,
         StaffId = domain.StaffId,
-        TransactionId = domain.TransactionId,
+        TransactionId = domain.TransactionId == Guid.Empty ? null : domain.TransactionId,
         BranchCode = domain.BranchCode,
         DocumentType = domain.DocumentType,
         IsVerified = domain.IsVerified,
