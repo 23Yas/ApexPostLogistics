@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Local scratch and sample output
+AUDIT-SAMPLE.json
+cookies.txt
+login_out.txt
+test-output.txt
