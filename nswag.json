@@ -1,0 +1,51 @@
+{
+  "runtime": "Net100",
+  "defaultVariables": "",
+  "documentGenerator": {
+    "fromDocument": {
+      "json": "contracts/v2.json",
+      "output": null,
+      "newLineBehavior": "CarriageReturnLineFeed"
+    }
+  },
+  "codeGenerators": {
+    "openApiToCSharpClient": {
+      "clientBaseClass": null,
+      "configurationClass": null,
+      "generateClientClasses": true,
+      "generateClientInterfaces": true,
+      "injectHttpClient": true,
+      "disposeHttpClient": false,
+      "generateExceptionClasses": true,
+      "exceptionClass": "ApiException",
+      "useHttpClientCreationMethod": false,
+      "useBaseUrl": true,
+      "generateSyncMethods": false,
+      "generateUpdateJsonSerializerSettingsMethod": true,
+      "enforceFlagEnums": false,
+      "parameterArrayType": "System.Collections.Generic.IEnumerable",
+      "parameterDictionaryType": "System.Collections.Generic.IDictionary",
+      "responseArrayType": "System.Collections.Generic.ICollection",
+      "responseDictionaryType": "System.Collections.Generic.IDictionary",
+      "wrapResponses": false,
+      "generateResponseClasses": true,
+      "namespace": "ApexPost.Client",
+      "requiredPropertiesMustBeDefined": true,
+      "dateType": "System.DateTimeOffset",
+      "inlineNamedArrays": false,
+      "inlineNamedDictionaries": false,
+      "inlineNamedTuples": true,
+      "inlineNamedAny": false,
+      "generateDtoTypes": true,
+      "generateOptionalParameters": true,
+      "generateJsonMethods": false,
+      "excludedTypeNames": [],
+      "includedTypeNames": [],
+      "handleReferences": false,
+      "generateTypeContracts": true,
+      "templateDirectory": null,
+      "output": "ApexPost.Client/Generated/ApexPostClient.g.cs",
+      "newLineBehavior": "CarriageReturnLineFeed"
+    }
+  }
+}

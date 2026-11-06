@@ -98,3 +98,19 @@ The tests never use `ApexPostDb`. Each test class creates a database named `Apex
 | `docs/adr/` | Architecture decision records |
 
 See `DESIGN.md` for the entity-relationship diagram, delete behaviour and the requirement status, and `PERFORMANCE.md` for the index evidence.
+
+## Week 4 projects
+
+| Project | Contents |
+|---|---|
+| `ApexPost.Courier.Offline` | Couchbase Lite offline scan store (Part A) |
+| `ApexPost.Courier.Offline.Console` | Console test harness for the offline store |
+| `ApexPost.Api` | REST API v1/v2 with Swagger UI (Parts B, C, D) |
+| `ApexPost.Client` | NSwag-generated C# client from `contracts/v2.json` |
+| `ApexPost.Client.Console` | Console consumer for the generated client |
+| `ApexPost.Courier` | .NET MAUI courier app with offline sync (Part D) |
+| `contracts/` | OpenAPI contract snapshots `v1.json`, `v2.json` |
+
+### OpenAPI vs. Swagger UI
+
+The **OpenAPI specification** is the machine-readable contract (`/openapi/v1.json`, `/openapi/v2.json`) — it describes endpoints, request/response schemas and status codes, and is what SDK generators consume. The **built-in .NET generator** (`AddOpenApi()` / `MapOpenApi()`) produces that document automatically from the code (XML comments, attributes). **Swagger UI** is only the interactive documentation *viewer* at `/swagger` that renders the OpenAPI document and offers "Try it out". Swagger UI adds no specification of its own — it just displays what the generator produced. Only one generator runs: we use the built-in .NET OpenAPI generator; Swashbuckle is used for Swagger UI hosting only, not a second spec generator.

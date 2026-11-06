@@ -1,0 +1,101 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "ApexPost Logistics API",
+    "version": "v1",
+    "description": "RESTful API for ApexPost Logistics shipment tracking and management (v1 - deprecated)",
+    "contact": { "name": "ApexPost API Team", "email": "api-team@apexpost.local" }
+  },
+  "paths": {
+    "/api/v1/shipments": {
+      "get": {
+        "tags": ["Shipments"],
+        "summary": "Get paged shipments",
+        "operationId": "GetShipments",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "city", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" }, "400": { "description": "Bad Request" } }
+      },
+      "post": {
+        "tags": ["Shipments"],
+        "summary": "Create a new shipment",
+        "operationId": "CreateShipment",
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateShipmentRequest" } } } },
+        "responses": {
+          "201": { "description": "Created", "headers": { "Location": { "schema": { "type": "string" } } } },
+          "400": { "description": "Bad Request" },
+          "409": { "description": "Conflict" }
+        }
+      }
+    },
+    "/api/v1/shipments/{trackingNumber}": {
+      "get": {
+        "tags": ["Shipments"],
+        "summary": "Get shipment by tracking number",
+        "operationId": "GetShipment",
+        "parameters": [ { "name": "trackingNumber", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not Found" } }
+      },
+      "put": {
+        "tags": ["Shipments"],
+        "summary": "Update shipment details",
+        "operationId": "UpdateShipment",
+        "parameters": [ { "name": "trackingNumber", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "OK" }, "400": { "description": "Bad Request" }, "404": { "description": "Not Found" } }
+      },
+      "delete": {
+        "tags": ["Shipments"],
+        "summary": "Delete a shipment",
+        "operationId": "DeleteShipment",
+        "parameters": [ { "name": "trackingNumber", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "204": { "description": "No Content" }, "404": { "description": "Not Found" }, "409": { "description": "Conflict" } }
+      }
+    },
+    "/api/v1/shipments/{trackingNumber}/status": {
+      "patch": {
+        "tags": ["Shipments"],
+        "summary": "Update shipment status",
+        "operationId": "UpdateShipmentStatus",
+        "parameters": [ { "name": "trackingNumber", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "OK" }, "400": { "description": "Bad Request" }, "404": { "description": "Not Found" }, "409": { "description": "Conflict" } }
+      }
+    },
+    "/api/v1/shipments/{trackingNumber}/scans": {
+      "post": {
+        "tags": ["Scans"],
+        "summary": "Bulk upload shipment scans",
+        "operationId": "UploadScans",
+        "parameters": [ { "name": "trackingNumber", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "OK" }, "400": { "description": "Bad Request" }, "404": { "description": "Not Found" } }
+      },
+      "get": {
+        "tags": ["Scans"],
+        "summary": "Get shipment scan history",
+        "operationId": "GetScans",
+        "parameters": [ { "name": "trackingNumber", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not Found" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateShipmentRequest": {
+        "type": "object",
+        "required": ["trackingNumber", "weightKg", "recipientName", "recipientPhone", "recipientAddress", "recipientCity"],
+        "properties": {
+          "trackingNumber": { "type": "string", "pattern": "^APX-\\d{8}$" },
+          "weightKg": { "type": "number", "minimum": 0.1, "maximum": 70 },
+          "recipientName": { "type": "string" },
+          "recipientPhone": { "type": "string" },
+          "recipientAddress": { "type": "string" },
+          "recipientCity": { "type": "string" },
+          "price": { "type": "number" }
+        }
+      }
+    }
+  }
+}
