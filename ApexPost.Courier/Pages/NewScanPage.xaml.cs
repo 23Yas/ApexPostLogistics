@@ -11,6 +11,7 @@ public partial class NewScanPage : ContentPage
     {
         InitializeComponent();
         _repository = repository;
+        ScanTypePicker.ItemsSource = new[] { "Pickup", "InTransit", "Delivered", "Failed" };
         ScanTypePicker.SelectedIndex = 0;
     }
 

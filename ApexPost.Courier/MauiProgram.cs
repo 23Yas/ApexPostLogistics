@@ -2,7 +2,7 @@
 using ApexPost.Courier.Services;
 using Microsoft.Extensions.Logging;
 using Polly;
-using Polly.Extensions.Http;
+using Polly.Timeout;
 using System.Net;
 
 namespace ApexPost.Courier;
@@ -37,8 +37,7 @@ public static class MauiProgram
 			client.Timeout = TimeSpan.FromSeconds(30); // overall request timeout
 		})
 		.AddHttpMessageHandler<AuthHeaderHandler>()
-		.AddPolicyHandler(GetRetryPolicy())
-		.AddPolicyHandler(GetCircuitBreakerPolicy());
+		.AddPolicyHandler(GetResiliencePipeline());
 
 		builder.Services.AddSingleton<OfflineSyncService>();
 
@@ -55,10 +54,15 @@ public static class MauiProgram
 		return builder.Build();
 	}
 
-	private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+	private static IAsyncPolicy<HttpResponseMessage> GetResiliencePipeline()
 	{
-		return Policy<HttpResponseMessage>
+		// Per-attempt timeout: each individual try times out after 10s.
+		// Overall request timeout is enforced by HttpClient.Timeout (30s) above.
+		var perAttemptTimeout = Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromSeconds(10));
+
+		var retry = Policy<HttpResponseMessage>
 			.Handle<HttpRequestException>()
+			.Or<TimeoutRejectedException>()
 			.OrResult(msg => msg.StatusCode == HttpStatusCode.RequestTimeout
 				|| (int)msg.StatusCode >= 500)
 			.WaitAndRetryAsync(
@@ -66,18 +70,19 @@ public static class MauiProgram
 				sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500)),
 				onRetry: (outcome, delay, attempt, ctx) =>
 					Console.WriteLine($"[Retry] Attempt {attempt} after {delay.TotalSeconds:F1}s: {outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()}"));
-	}
 
-	private static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
-	{
-		return Policy<HttpResponseMessage>
+		var circuitBreaker = Policy<HttpResponseMessage>
 			.Handle<HttpRequestException>()
+			.Or<TimeoutRejectedException>()
 			.OrResult(msg => (int)msg.StatusCode >= 500)
 			.CircuitBreakerAsync(
 				handledEventsAllowedBeforeBreaking: 5,
-				breakDuration: TimeSpan.FromSeconds(30),
+				durationOfBreak: TimeSpan.FromSeconds(30),
 				onBreak: (outcome, duration) => Console.WriteLine($"[CircuitBreaker] OPEN for {duration.TotalSeconds}s"),
 				onReset: () => Console.WriteLine("[CircuitBreaker] CLOSED"),
 				onHalfOpen: () => Console.WriteLine("[CircuitBreaker] HALF-OPEN"));
+
+		// Wrap order: circuit breaker outermost, then retry, then per-attempt timeout innermost.
+		return Policy.WrapAsync(circuitBreaker, retry, perAttemptTimeout);
 	}
 }

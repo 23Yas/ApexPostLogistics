@@ -7,16 +7,7 @@
         <VerticalStackLayout Padding="20" Spacing="10">
             <Label Text="New Shipment Scan" FontSize="22" FontAttributes="Bold" />
             <Entry x:Name="TrackingEntry" Placeholder="Tracking number (APX-XXXXXXXX)" />
-            <Picker x:Name="ScanTypePicker" Title="Scan type">
-                <Picker.ItemsSource>
-                    <x:Array Type="x:String">
-                        <x:String>Pickup</x:String>
-                        <x:String>InTransit</x:String>
-                        <x:String>Delivered</x:String>
-                        <x:String>Failed</x:String>
-                    </x:Array>
-                </Picker.ItemsSource>
-            </Picker>
+            <Picker x:Name="ScanTypePicker" Title="Scan type" />
             <Entry x:Name="CourierEntry" Placeholder="Courier ID" Text="courier-001" />
             <Entry x:Name="LocationEntry" Placeholder="Location" />
             <Editor x:Name="NotesEntry" Placeholder="Notes (recipient signature required for Delivered)" HeightRequest="80" />
