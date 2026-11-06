@@ -12,7 +12,7 @@ namespace ApexPost.Api.Controllers;
 /// Shipments API controller for managing shipment lifecycle
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize]
 public class ShipmentsController : ControllerBase
 {
