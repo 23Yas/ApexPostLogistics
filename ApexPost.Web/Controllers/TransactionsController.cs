@@ -1,11 +1,12 @@
 namespace ApexPost.Web.Controllers;
 
-using System.Security.Claims;
 using ApexPost.Core.Application.Interfaces;
 using ApexPost.Core.Application.Services;
 using ApexPost.Core.Domain;
+using ApexPost.Web.Models.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 [Authorize]
 public sealed class TransactionsController : Controller
@@ -19,8 +20,10 @@ public sealed class TransactionsController : Controller
     private readonly IStockRepository _stockRepository;
     private readonly PricingService _pricingService;
 
-    private readonly IIdentityVerificationRepository _identityVerificationRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IdentityVerificationService _identityVerificationService;
+    
+
+    
 
     public TransactionsController(
         CounterService counterService,
@@ -31,8 +34,7 @@ public sealed class TransactionsController : Controller
         IProductRepository productRepository,
         IStockRepository stockRepository,
                 PricingService pricingService,
-        IIdentityVerificationRepository identityVerificationRepository,
-        IUnitOfWork unitOfWork)
+               IdentityVerificationService identityVerificationService)
     {
         _counterService = counterService;
         _transactionService = transactionService;
@@ -42,8 +44,7 @@ public sealed class TransactionsController : Controller
         _productRepository = productRepository;
         _stockRepository = stockRepository;
         _pricingService = pricingService;
-        _identityVerificationRepository = identityVerificationRepository;
-        _unitOfWork = unitOfWork;
+        _identityVerificationService = identityVerificationService;
     }
 
     [HttpGet]
@@ -171,19 +172,7 @@ public sealed class TransactionsController : Controller
         }
 
         var staffId = Guid.TryParse(User.FindFirst("StaffId")?.Value, out var parsedStaffId) ? parsedStaffId : Guid.Empty;
-        var verification = new IdentityVerification
-        {
-            StaffId = staffId,
-            TransactionId = Guid.Empty,
-            BranchCode = branchCode,
-            DocumentType = documentType.Trim(),
-            IsVerified = true,
-            MaskedIdentifier = maskedIdentifier.Trim(),
-            VerifiedAtUtc = DateTimeOffset.UtcNow
-        };
-
-        await _identityVerificationRepository.AddAsync(verification, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _identityVerificationService.RecordAsync(branchCode, staffId, documentType, maskedIdentifier, cancellationToken);
 
         TempData["SuccessMessage"] = $"Identity verification recorded for {customerName ?? "customer"}: {documentType} / {maskedIdentifier}."; return RedirectToAction(nameof(IdentityVerification));
     }
@@ -215,8 +204,23 @@ public sealed class TransactionsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(string productSku, int quantity, string paymentMethod, string? serviceLevel, string? counterId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromForm] CreateSaleRequest request, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+        {
+            TempData["ErrorMessage"] = ModelState.Values
+                .SelectMany(entry => entry.Errors)
+                .Select(error => error.ErrorMessage)
+                .FirstOrDefault() ?? "The sale request is not valid.";
+            return RedirectToAction(nameof(New));
+        }
+
+        var productSku = request.ProductSku;
+        var quantity = request.Quantity;
+        var paymentMethod = request.PaymentMethod;
+        var serviceLevel = request.ServiceLevel;
+        var counterId = request.CounterId;
+
         var branchCode = new BranchCode(User.FindFirst("BranchCode")?.Value ?? "BR-001");
         var product = await _productRepository.GetBySkuAsync(new Sku(productSku), cancellationToken);
         if (product is null)

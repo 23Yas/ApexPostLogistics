@@ -22,6 +22,22 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         _allowedIps = allowedIps;
     }
 
+    /// <summary>
+    /// The login rate limiter is a static counter shared by every test host in the process.
+    /// Clearing it gives each web test a fresh budget. Test-only: production code is unchanged.
+    /// </summary>
+    public static void ResetRateLimits()
+    {
+        var field = typeof(ApexPost.Web.Middleware.RateLimitMiddleware).GetField(
+            "RequestCounts",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        if (field?.GetValue(null) is System.Collections.IDictionary counts)
+        {
+            counts.Clear();
+        }
+    }
+
     public string TestConnectionString => new SqlConnectionStringBuilder
     {
         DataSource = @"(localdb)\MSSQLLocalDB",

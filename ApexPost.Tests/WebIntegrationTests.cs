@@ -5,7 +5,7 @@ using ApexPost.Web;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
-
+[Collection("WebTests")]
 public sealed class WebIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly CustomWebApplicationFactory _factory;
@@ -13,6 +13,7 @@ public sealed class WebIntegrationTests : IClassFixture<CustomWebApplicationFact
     public WebIntegrationTests(CustomWebApplicationFactory factory)
     {
         _factory = factory;
+        CustomWebApplicationFactory.ResetRateLimits();
     }
 
     [Fact]

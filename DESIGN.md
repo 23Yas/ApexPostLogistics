@@ -202,8 +202,8 @@ Status key: **Written** means the code or script exists. **Verified** means you 
 | Normalization note and ER diagram | Written | sections 2 and 3 |
 | Reporting queries with joins, GROUP BY, HAVING | Written | `sql/01`–`05` |
 | T-SQL sale transaction | Written | `sql/06` (needs the stock check and price fix) |
-| Blocking demonstration and write-up | Open | `sql/07` exists, write-up needed in PERFORMANCE.md |
-| Index evidence (four workloads, plans, IO and time) | Open | `PERFORMANCE.md` template, `sql/08`, `13`, `14`, `15` |
+| Blocking and deadlock write-up | Written | Section "Concurrency, blocking and deadlocks" in DESIGN.md. The observed blocking output from `sql/07` is still to be recorded in PERFORMANCE.md |
+| Index evidence (four workloads, plans, IO and time) | Partial | PERFORMANCE.md: baseline, literal fix and W2 candidate measured. Write overhead, W3 and W4 candidates, estimated vs actual still open | `PERFORMANCE.md` template, `sql/08`, `13`, `14`, `15` |
 | Stored procedures (three, with THROW and XACT_ABORT) | Written | `sql/09`, migration `AddStoredProcedures` |
 | EF Core calls procedures with parameters | Written | `ExtraAdapter.cs` |
 | Least-privilege note | Written | `sql/12`, README |
@@ -211,22 +211,85 @@ Status key: **Written** means the code or script exists. **Verified** means you 
 | DbContext, configurations, converters, owned lines | Written | `ApexPostDbContext.cs`, `EntityConfigurations.cs` |
 | Migrations: InitialCreate and a follow-up | Written | `Migrations/` |
 | Seeding: 5 branches, 20 staff, 30 products, 10 zones and rates, 200 transactions | Written | `SeedDataBootstrap.cs`, `SeedData.cs` |
-| AsNoTracking DTO projections for every read screen | Open | next round |
-| AsSplitQuery, ExecuteUpdateAsync, ToQueryString samples | Open | next round |
+| AsNoTracking projections for report reads | Partial | Reports use AsNoTracking projections (ExtraAdapter.cs). Other read screens still to convert |
+Two rows: | AsSplitQuery guard and ExecuteUpdateAsync price revision | Written | EfRepositories.cs, PriceRevisionService.cs, PriceRevisionTests.cs | and | ToQueryString samples in PERFORMANCE.md | Open | QuerySqlSamplesTests output still to paste |
 | Repository, UnitOfWork, DTO, domain separation | Partial | repositories and UoW written; domain split and DTOs open |
 | Domain rules with behaviour (`Remove`, `Add`, `AddLine`, `NeedsIdentityVerification`) | Written | `Models.cs` |
 | Problem Details mapping (409, 404, 400) | Written | `ExceptionHandlingMiddleware.cs` |
 | Audit writes do not break the business transaction | Written | `EfAuditStore`, ADR-014 |
 | Unit tests with fakes and spy unit of work | Written | `CheckoutServiceTests.cs`, `Fakes.cs` |
 | SQL Server integration tests on a disposable database | Written | `DatabaseIntegrationTests.cs`, `CustomWebApplicationFactory.cs` |
-| WebApplicationFactory tests on the test database | Written | `WebIntegrationTests.cs` (extend with report and sale tests) |
+| WebApplicationFactory tests on the test database | Verified | WebIntegrationTests.cs, WebSalesAndVoidTests.cs (sale persists, Branch Manager void, report total). 409 is covered at middleware and database level | `WebIntegrationTests.cs` (extend with report and sale tests) |
 | Week 2 business-rule tests unchanged | Written | `BusinessRulesTests.cs` |
 | Secrets out of source control | Written | `appsettings.Development.json`, README (user-secrets) |
 | Feature branches and pull requests | Open | you do this in Git |
 
 ## 12. Open items for the next round
 
-1. Domain/Application project split, so the dependency rule is checked by the compiler.
-2. Request, command and response DTOs, with explicit mapping and an over-posting test.
-3. `AsNoTracking` projections for each read screen, `AsSplitQuery` where there are several collections, and `ExecuteUpdateAsync` for a price revision.
-4. Move the pricing and shipping rules out of `TransactionsController.Create`.
+Blocking observation from sql/07 (two SSMS sessions)
+Write overhead from sql/17
+W3 and W4 candidate indexes
+Estimated versus actual rows (sql/14)
+ToQueryString() samples in PERFORMANCE.md
+Feature branch and pull request in Git
+
+
+## Concurrency, blocking and deadlocks
+
+### Isolation level
+
+All sessions use the SQL Server default, READ COMMITTED. Reads take short shared locks that are released as soon as each row is read, so the reporting procedures never hold locks for long.
+
+Read Committed Snapshot Isolation (RCSI) is a possible future setting. It is not enabled, because it changes the behaviour that `sql/07` is meant to demonstrate.
+
+### Two concurrency strategies
+
+| Path | Strategy | Locks held between read and write |
+|---|---|---|
+| SQL sale script (`sql/06`) and `usp_AdjustStock` | Pessimistic: `WITH (UPDLOCK, ROWLOCK)` on the `BranchStock` row | Yes, for the length of one short transaction |
+| EF `CheckoutService` (the web counter sale) | Optimistic: `rowversion` on `BranchStock` | None. A stale write raises `DbUpdateConcurrencyException`, which becomes HTTP 409 |
+
+The EF path never waits on a lock, so it cannot deadlock. The SQL path waits only for the single `BranchStock` row lock.
+
+### Consistent table access order
+
+Every write path touches tables in the same order:
+
+1. `BranchStock` (lock the stock row first)
+2. `CounterTransactions`, then `TransactionLines`, then `Payments`, or `StockAdjustments` for `usp_AdjustStock`
+
+No path locks these tables in reverse order. A deadlock needs two sessions that each hold a lock the other is waiting for. Under a single order, that cycle cannot form between these procedures.
+
+### Short transactions
+
+- `usp_AdjustStock` does one lookup, one update and one insert, inside `BEGIN TRAN`/`COMMIT`. `TRY…CATCH` rolls back on any error.
+- The EF checkout reads stock, stages the rows and calls `SaveChangesAsync` once. Nothing waits on the user between the read and the save.
+- Reports read without holding write locks across a request.
+
+### Retrying transient failures
+
+The EF context uses `EnableRetryOnFailure` inside an execution strategy. SQL Server error 1205 (deadlock victim) is one of the transient errors it retries, so a chosen deadlock victim is retried automatically.
+
+### Monitoring blocking
+
+Use this query in a third SSMS session while `sql/07` runs:
+
+```sql
+SELECT r.session_id, r.blocking_session_id, r.wait_type, r.wait_time, r.status, t.text
+FROM sys.dm_exec_requests AS r
+CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) AS t
+WHERE r.blocking_session_id <> 0;
+```
+
+### Observed blocking (to be recorded)
+
+- Session 1 (updating stock): *not yet recorded*
+- Session 2 (reading stock): *not yet recorded*
+- Wait type and duration seen in the monitoring query: *not yet recorded*
+
+Record these from the real run in PERFORMANCE.md. Do not estimate them.
+
+
+### Split queries
+
+`AsSplitQuery()` is applied to queries that include the `TransactionLines` collection. Today each of these queries loads one collection, so the split does not prevent any row multiplication. It is a guard: any future query that includes a second collection will not produce a cartesian product. The cost is one extra SQL statement per call, which is an accepted trade-off.

@@ -5,8 +5,8 @@ GO
 -- Keep only the indexes that the measurements justify. Each kept index must also be added to
 -- the EF configuration and a migration, so the repository and the database stay in step.
 
--- W1: low-stock by branch. Replaces IX_BranchStock_BranchCode_QuantityOnHand (same keys, now covering).
--- DROP INDEX IF EXISTS IX_BranchStock_BranchCode_QuantityOnHand ON BranchStock;
+-- W1: low-stock by branch. Filter is BranchCode = @x AND QuantityOnHand <= @y.
+-- The existing IX_BranchStock_BranchCode_ProductSku cannot seek on QuantityOnHand, so it is not dropped.
 -- CREATE NONCLUSTERED INDEX IX_BranchStock_LowStock
 --   ON BranchStock (BranchCode, QuantityOnHand)
 --   INCLUDE (ProductSku, ReorderThreshold);
@@ -14,7 +14,7 @@ GO
 -- W2: daily sales. Covering for the daily total.
 -- CREATE NONCLUSTERED INDEX IX_CounterTransactions_BranchCode_CreatedAtUtc_Covering
 --   ON CounterTransactions (BranchCode, CreatedAtUtc)
---   INCLUDE (Total, Status);
+--   INCLUDE (Total);
 
 -- W3: shipments by zone and service level. New index.
 -- CREATE NONCLUSTERED INDEX IX_Shipments_ZoneId_ServiceLevel

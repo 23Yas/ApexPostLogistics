@@ -22,7 +22,9 @@ BEGIN
 	FROM CounterTransactions t
 	INNER JOIN TransactionLines l ON l.CounterTransactionId = t.Id
 	WHERE t.BranchCode = @BranchCode
-	  AND CAST(t.CreatedAtUtc AS date) = @Date
+	  AND t.Status = 'Paid'
+	  AND t.CreatedAtUtc >= CAST(@Date AS datetime2)
+	  AND t.CreatedAtUtc < DATEADD(day, 1, CAST(@Date AS datetime2))
 	GROUP BY t.BranchCode, CAST(t.CreatedAtUtc AS date)
 	ORDER BY SaleDate;
 END;
@@ -48,7 +50,7 @@ BEGIN
 	INNER JOIN Products p ON p.Sku = bs.ProductSku
 	WHERE bs.QuantityOnHand <= @Threshold
 	  AND (@BranchCode IS NULL OR bs.BranchCode = @BranchCode)
-		ORDER BY bs.BranchCode, bs.ProductSku
+	ORDER BY bs.BranchCode, bs.ProductSku
 	OPTION (RECOMPILE);
 END;
 GO
@@ -76,16 +78,22 @@ BEGIN
 	IF @ChangedBy IS NULL OR LTRIM(RTRIM(@ChangedBy)) = N''
 		THROW 50007, N'ChangedBy is required.', 1;
 
+	IF @Delta IS NULL OR @Delta = 0
+		THROW 50009, N'Delta must be a non-zero number.', 1;
+
 	BEGIN TRY
 		BEGIN TRAN;
 
 		DECLARE @CurrentQty int;
 		SELECT @CurrentQty = QuantityOnHand
-		FROM BranchStock
+		FROM BranchStock WITH (UPDLOCK, ROWLOCK)
 		WHERE BranchCode = @BranchCode AND ProductSku = @Sku;
 
 		IF @CurrentQty IS NULL
 			THROW 50008, N'No stock row exists for the supplied branch and SKU.', 1;
+
+		IF @CurrentQty + @Delta < 0
+			THROW 50010, N'Adjustment would make stock negative.', 1;
 
 		UPDATE BranchStock
 		   SET QuantityOnHand = QuantityOnHand + @Delta,

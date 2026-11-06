@@ -780,3 +780,186 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261105100000_HardenStoredProcedures'
+)
+BEGIN
+
+    CREATE OR ALTER PROCEDURE dbo.usp_DailyBranchSales
+    	@BranchCode nvarchar(32),
+    	@Date date
+    AS
+    BEGIN
+    	SET NOCOUNT ON;
+
+    	IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = N''
+    		THROW 50001, N'BranchCode is required.', 1;
+
+    	IF @Date IS NULL
+    		THROW 50002, N'Date is required.', 1;
+
+    	SELECT
+    		t.BranchCode,
+    		CAST(t.CreatedAtUtc AS date) AS SaleDate,
+    		SUM(CASE WHEN l.ProductSku IS NOT NULL THEN l.Quantity * l.UnitPrice ELSE 0 END) AS RetailTotal,
+    		SUM(CASE WHEN l.ServiceCode IS NOT NULL THEN l.Quantity * l.UnitPrice ELSE 0 END) AS ServiceTotal
+    	FROM CounterTransactions t
+    	INNER JOIN TransactionLines l ON l.CounterTransactionId = t.Id
+    	WHERE t.BranchCode = @BranchCode
+    	  AND t.Status = 'Paid'
+    	  AND t.CreatedAtUtc >= CAST(@Date AS datetime2)
+    	  AND t.CreatedAtUtc < DATEADD(day, 1, CAST(@Date AS datetime2))
+    	GROUP BY t.BranchCode, CAST(t.CreatedAtUtc AS date)
+    	ORDER BY SaleDate;
+    END;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261105100000_HardenStoredProcedures'
+)
+BEGIN
+
+    CREATE OR ALTER PROCEDURE dbo.usp_AdjustStock
+    	@BranchCode nvarchar(32),
+    	@Sku nvarchar(64),
+    	@Delta int,
+    	@Reason nvarchar(200),
+    	@ChangedBy nvarchar(128)
+    AS
+    BEGIN
+    	SET NOCOUNT ON;
+    	SET XACT_ABORT ON;
+
+    	IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = N''
+    		THROW 50004, N'BranchCode is required.', 1;
+
+    	IF @Sku IS NULL OR LTRIM(RTRIM(@Sku)) = N''
+    		THROW 50005, N'Sku is required.', 1;
+
+    	IF @Reason IS NULL OR LTRIM(RTRIM(@Reason)) = N''
+    		THROW 50006, N'Reason is required.', 1;
+
+    	IF @ChangedBy IS NULL OR LTRIM(RTRIM(@ChangedBy)) = N''
+    		THROW 50007, N'ChangedBy is required.', 1;
+
+    	IF @Delta IS NULL OR @Delta = 0
+    		THROW 50009, N'Delta must be a non-zero number.', 1;
+
+    	BEGIN TRY
+    		BEGIN TRAN;
+
+    		DECLARE @CurrentQty int;
+    		SELECT @CurrentQty = QuantityOnHand
+    		FROM BranchStock WITH (UPDLOCK, ROWLOCK)
+    		WHERE BranchCode = @BranchCode AND ProductSku = @Sku;
+
+    		IF @CurrentQty IS NULL
+    			THROW 50008, N'No stock row exists for the supplied branch and SKU.', 1;
+
+    		IF @CurrentQty + @Delta < 0
+    			THROW 50010, N'Adjustment would make stock negative.', 1;
+
+    		UPDATE BranchStock
+    		   SET QuantityOnHand = QuantityOnHand + @Delta,
+    			   ModifiedAtUtc = SYSUTCDATETIME()
+    		 WHERE BranchCode = @BranchCode AND ProductSku = @Sku;
+
+    		INSERT INTO StockAdjustments (
+    			BranchCode, ProductSku, Delta, Reason, ChangedBy, CreatedAtUtc)
+    		VALUES (
+    			@BranchCode, @Sku, @Delta, @Reason, @ChangedBy, SYSUTCDATETIME());
+
+    		COMMIT TRAN;
+    	END TRY
+    	BEGIN CATCH
+    		IF XACT_STATE() <> 0
+    			ROLLBACK TRAN;
+    		THROW;
+    	END CATCH;
+    END;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261105100000_HardenStoredProcedures'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261105100000_HardenStoredProcedures', N'10.0.0');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261106114013_ChangeAuditCodeColumnsToVarchar'
+)
+BEGIN
+    DECLARE @var nvarchar(max);
+    SELECT @var = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[AuditEntries]') AND [c].[name] = N'Role');
+    IF @var IS NOT NULL EXEC(N'ALTER TABLE [AuditEntries] DROP CONSTRAINT ' + @var + ';');
+    ALTER TABLE [AuditEntries] ALTER COLUMN [Role] varchar(64) NOT NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261106114013_ChangeAuditCodeColumnsToVarchar'
+)
+BEGIN
+    DECLARE @var1 nvarchar(max);
+    SELECT @var1 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[AuditEntries]') AND [c].[name] = N'ResultStatus');
+    IF @var1 IS NOT NULL EXEC(N'ALTER TABLE [AuditEntries] DROP CONSTRAINT ' + @var1 + ';');
+    ALTER TABLE [AuditEntries] ALTER COLUMN [ResultStatus] varchar(64) NOT NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261106114013_ChangeAuditCodeColumnsToVarchar'
+)
+BEGIN
+    DECLARE @var2 nvarchar(max);
+    SELECT @var2 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[AuditEntries]') AND [c].[name] = N'CorrelationId');
+    IF @var2 IS NOT NULL EXEC(N'ALTER TABLE [AuditEntries] DROP CONSTRAINT ' + @var2 + ';');
+    ALTER TABLE [AuditEntries] ALTER COLUMN [CorrelationId] varchar(128) NOT NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261106114013_ChangeAuditCodeColumnsToVarchar'
+)
+BEGIN
+    DECLARE @var3 nvarchar(max);
+    SELECT @var3 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[AuditEntries]') AND [c].[name] = N'BranchCode');
+    IF @var3 IS NOT NULL EXEC(N'ALTER TABLE [AuditEntries] DROP CONSTRAINT ' + @var3 + ';');
+    ALTER TABLE [AuditEntries] ALTER COLUMN [BranchCode] varchar(32) NOT NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261106114013_ChangeAuditCodeColumnsToVarchar'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261106114013_ChangeAuditCodeColumnsToVarchar', N'10.0.0');
+END;
+
+COMMIT;
+GO
+

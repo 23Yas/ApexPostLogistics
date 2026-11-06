@@ -35,7 +35,8 @@ namespace ApexPost.Infrastructure.Migrations
                     b.Property<string>("BranchCode")
                         .IsRequired()
                         .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<string>("Controller")
                         .IsRequired()
@@ -45,7 +46,8 @@ namespace ApexPost.Infrastructure.Migrations
                     b.Property<string>("CorrelationId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(128)");
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .ValueGeneratedOnAdd()
@@ -77,12 +79,14 @@ namespace ApexPost.Infrastructure.Migrations
                     b.Property<string>("ResultStatus")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("RouteValues")
                         .IsRequired()

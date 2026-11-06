@@ -353,12 +353,12 @@ public sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntr
         entity.ToTable("AuditEntries");
         entity.HasKey(x => x.Id);
         entity.Property(x => x.Id).ValueGeneratedNever();
-        entity.Property(x => x.Role).HasMaxLength(64).IsRequired();
-        entity.Property(x => x.BranchCode).HasMaxLength(32).IsRequired();
+        entity.Property(x => x.Role).HasMaxLength(64).IsUnicode(false).IsRequired();
+        entity.Property(x => x.BranchCode).HasMaxLength(32).IsUnicode(false).IsRequired();
         entity.Property(x => x.Controller).HasMaxLength(128).IsRequired();
         entity.Property(x => x.Action).HasMaxLength(128).IsRequired();
-        entity.Property(x => x.CorrelationId).HasMaxLength(128).IsRequired();
-        entity.Property(x => x.ResultStatus).HasMaxLength(64).IsRequired();
+        entity.Property(x => x.CorrelationId).HasMaxLength(128).IsUnicode(false).IsRequired();
+        entity.Property(x => x.ResultStatus).HasMaxLength(64).IsUnicode(false).IsRequired();
         entity.Property(x => x.RouteValues).HasMaxLength(512);
         entity.Property(x => x.DurationMs).HasColumnType("float");
         entity.Property(x => x.RecordedAtUtc).HasColumnType("datetimeoffset");

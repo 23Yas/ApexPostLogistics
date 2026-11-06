@@ -1,0 +1,116 @@
+﻿using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace ApexPost.Infrastructure.Migrations
+{
+    /// <summary>
+    /// Hardens two stored procedures:
+    /// usp_DailyBranchSales counts only Paid sales and uses a SARGable date range.
+    /// usp_AdjustStock validates Delta, locks the stock row and refuses an adjustment that would make stock negative.
+    /// The bodies match sql/09_stored_procedures.sql.
+    /// </summary>
+    [DbContext(typeof(ApexPostDbContext))]
+    [Migration("20261105100000_HardenStoredProcedures")]
+    public partial class HardenStoredProcedures : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.Sql(@"
+CREATE OR ALTER PROCEDURE dbo.usp_DailyBranchSales
+	@BranchCode nvarchar(32),
+	@Date date
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = N''
+		THROW 50001, N'BranchCode is required.', 1;
+
+	IF @Date IS NULL
+		THROW 50002, N'Date is required.', 1;
+
+	SELECT
+		t.BranchCode,
+		CAST(t.CreatedAtUtc AS date) AS SaleDate,
+		SUM(CASE WHEN l.ProductSku IS NOT NULL THEN l.Quantity * l.UnitPrice ELSE 0 END) AS RetailTotal,
+		SUM(CASE WHEN l.ServiceCode IS NOT NULL THEN l.Quantity * l.UnitPrice ELSE 0 END) AS ServiceTotal
+	FROM CounterTransactions t
+	INNER JOIN TransactionLines l ON l.CounterTransactionId = t.Id
+	WHERE t.BranchCode = @BranchCode
+	  AND t.Status = 'Paid'
+	  AND t.CreatedAtUtc >= CAST(@Date AS datetime2)
+	  AND t.CreatedAtUtc < DATEADD(day, 1, CAST(@Date AS datetime2))
+	GROUP BY t.BranchCode, CAST(t.CreatedAtUtc AS date)
+	ORDER BY SaleDate;
+END;");
+
+            migrationBuilder.Sql(@"
+CREATE OR ALTER PROCEDURE dbo.usp_AdjustStock
+	@BranchCode nvarchar(32),
+	@Sku nvarchar(64),
+	@Delta int,
+	@Reason nvarchar(200),
+	@ChangedBy nvarchar(128)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SET XACT_ABORT ON;
+
+	IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = N''
+		THROW 50004, N'BranchCode is required.', 1;
+
+	IF @Sku IS NULL OR LTRIM(RTRIM(@Sku)) = N''
+		THROW 50005, N'Sku is required.', 1;
+
+	IF @Reason IS NULL OR LTRIM(RTRIM(@Reason)) = N''
+		THROW 50006, N'Reason is required.', 1;
+
+	IF @ChangedBy IS NULL OR LTRIM(RTRIM(@ChangedBy)) = N''
+		THROW 50007, N'ChangedBy is required.', 1;
+
+	IF @Delta IS NULL OR @Delta = 0
+		THROW 50009, N'Delta must be a non-zero number.', 1;
+
+	BEGIN TRY
+		BEGIN TRAN;
+
+		DECLARE @CurrentQty int;
+		SELECT @CurrentQty = QuantityOnHand
+		FROM BranchStock WITH (UPDLOCK, ROWLOCK)
+		WHERE BranchCode = @BranchCode AND ProductSku = @Sku;
+
+		IF @CurrentQty IS NULL
+			THROW 50008, N'No stock row exists for the supplied branch and SKU.', 1;
+
+		IF @CurrentQty + @Delta < 0
+			THROW 50010, N'Adjustment would make stock negative.', 1;
+
+		UPDATE BranchStock
+		   SET QuantityOnHand = QuantityOnHand + @Delta,
+			   ModifiedAtUtc = SYSUTCDATETIME()
+		 WHERE BranchCode = @BranchCode AND ProductSku = @Sku;
+
+		INSERT INTO StockAdjustments (
+			BranchCode, ProductSku, Delta, Reason, ChangedBy, CreatedAtUtc)
+		VALUES (
+			@BranchCode, @Sku, @Delta, @Reason, @ChangedBy, SYSUTCDATETIME());
+
+		COMMIT TRAN;
+	END TRY
+	BEGIN CATCH
+		IF XACT_STATE() <> 0
+			ROLLBACK TRAN;
+		THROW;
+	END CATCH;
+END;");
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            // Intentionally empty: rolling back this migration does not restore the earlier bodies.
+            // Rolling back AddStoredProcedures drops all three procedures.
+        }
+    }
+}

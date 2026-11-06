@@ -57,3 +57,9 @@ public interface IStockAdjustmentService
 {
     Task AdjustAsync(BranchCode branchCode, Sku sku, int delta, string reason, string changedBy, CancellationToken cancellationToken = default);
 }
+
+/// <summary>Set-based price revision. Runs as one UPDATE statement (ExecuteUpdateAsync), not load-change-save.</summary>
+public interface IPriceRevisionService
+{
+    Task<int> SetCategoryPriceAsync(ProductCategory category, Money newPrice, CancellationToken cancellationToken = default);
+}

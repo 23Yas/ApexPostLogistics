@@ -4,6 +4,7 @@ using ApexPost.Core.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 /// <summary>Maps exceptions to RFC 7807 Problem Details. Replaces the old 500-only class in CoreMiddleware.cs.</summary>
 public sealed class ExceptionHandlingMiddleware
@@ -45,15 +46,17 @@ public sealed class ExceptionHandlingMiddleware
                 throw;
             }
 
-            context.Response.StatusCode = status;
-            context.Response.ContentType = "application/problem+json";
-            await context.Response.WriteAsJsonAsync(new ProblemDetails
+            var problem = new ProblemDetails
             {
                 Status = status,
                 Title = title,
                 Detail = detail,
                 Extensions = { ["traceId"] = context.TraceIdentifier }
-            });
+            };
+
+            context.Response.StatusCode = status;
+            context.Response.ContentType = "application/problem+json";
+            await context.Response.WriteAsync(JsonSerializer.Serialize(problem), context.RequestAborted);
         }
     }
 

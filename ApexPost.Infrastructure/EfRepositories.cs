@@ -193,7 +193,7 @@ public class EfCounterTransactionRepository : EfRepository<CounterTransaction>, 
     }
 
     public async Task<IReadOnlyCollection<CounterTransaction>> GetByBranchAsync(BranchCode branchCode, CancellationToken cancellationToken = default)
-        => await DbContext.CounterTransactions.AsNoTracking().Where(transaction => transaction.BranchCode == branchCode).Include(transaction => transaction.LineItems).ToListAsync(cancellationToken);
+        => await DbContext.CounterTransactions.AsNoTracking().Where(transaction => transaction.BranchCode == branchCode).Include(transaction => transaction.LineItems).AsSplitQuery().ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyCollection<CounterTransaction>> GetByDateAsync(DateOnly date, BranchCode? branchCode = null, CancellationToken cancellationToken = default)
     {
@@ -206,7 +206,7 @@ public class EfCounterTransactionRepository : EfRepository<CounterTransaction>, 
             query = query.Where(transaction => transaction.BranchCode == branchCode.Value);
         }
 
-        return await query.Include(transaction => transaction.LineItems).ToListAsync(cancellationToken);
+        return await query.Include(transaction => transaction.LineItems).AsSplitQuery().ToListAsync(cancellationToken);
     }
 }
 
