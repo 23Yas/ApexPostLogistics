@@ -66,10 +66,10 @@ public sealed class Shipment
     public BranchCode BranchCode { get; init; }
     public int ZoneId { get; init; }
     public ServiceLevel ServiceLevel { get; init; }
-    public decimal WeightKg { get; init; }
-    public decimal Price { get; init; }
+    public decimal WeightKg { get; set; }
+    public decimal Price { get; set; }
     public string TrackingReference { get; init; } = string.Empty;
-    public string Status { get; init; } = "Created";
+    public string Status { get; set; } = "Created";
     public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
 }
 

@@ -1,0 +1,155 @@
+### ApexPost API – dev requests (fictional data only)
+
+# ---------- v1 (deprecated) ----------
+
+# Success: create shipment -> 201 + Location header
+POST {{baseUrl}}/api/v1/shipments
+Content-Type: application/json
+Authorization: Bearer {{devToken}}
+
+{
+  "trackingNumber": "APX-12345678",
+  "weightKg": 2.5,
+  "recipientName": "Jane Doe",
+  "recipientPhone": "+15551234567",
+  "recipientAddress": "123 Main St",
+  "recipientCity": "Springfield",
+  "price": 15.99
+}
+
+### Failure: duplicate tracking number -> 409
+POST {{baseUrl}}/api/v1/shipments
+Content-Type: application/json
+Authorization: Bearer {{devToken}}
+
+{
+  "trackingNumber": "APX-12345678",
+  "weightKg": 2.5,
+  "recipientName": "Jane Doe",
+  "recipientPhone": "+15551234567",
+  "recipientAddress": "123 Main St",
+  "recipientCity": "Springfield",
+  "price": 15.99
+}
+
+### Success: paged list -> 200
+GET {{baseUrl}}/api/v1/shipments?page=1&pageSize=20&status=Created&city=Springfield
+Authorization: Bearer {{devToken}}
+
+### Failure: unknown tracking number -> 404
+GET {{baseUrl}}/api/v1/shipments/APX-00000000
+Authorization: Bearer {{devToken}}
+
+### Success: update shipment -> 200
+PUT {{baseUrl}}/api/v1/shipments/APX-12345678
+Content-Type: application/json
+Authorization: Bearer {{devToken}}
+
+{
+  "trackingNumber": "APX-12345678",
+  "weightKg": 3.0,
+  "price": 18.50
+}
+
+### Failure: invalid status transition -> 409
+PATCH {{baseUrl}}/api/v1/shipments/APX-12345678/status
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "status": "Delivered"
+}
+
+### Success: valid status transition -> 200
+PATCH {{baseUrl}}/api/v1/shipments/APX-12345678/status
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "status": "PickedUp"
+}
+
+### Failure: delete non-Created shipment -> 409
+DELETE {{baseUrl}}/api/v1/shipments/APX-12345678
+Authorization: Bearer {{adminToken}}
+
+### Success: delete Created shipment -> 204
+DELETE {{baseUrl}}/api/v1/shipments/APX-87654321
+Authorization: Bearer {{adminToken}}
+
+### Success: bulk scan upload -> 200
+POST {{baseUrl}}/api/v1/shipments/APX-12345678/scans
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "scans": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "trackingNumber": "APX-12345678",
+      "scanType": "Pickup",
+      "courierId": "courier-001",
+      "location": "Depot A",
+      "scannedAtUtc": "2026-11-06T10:00:00Z",
+      "notes": ""
+    },
+    {
+      "id": "4fa85f64-5717-4562-b3fc-2c963f66afa7",
+      "trackingNumber": "APX-12345678",
+      "scanType": "Delivered",
+      "courierId": "courier-001",
+      "location": "123 Main St",
+      "scannedAtUtc": "2026-11-06T14:00:00Z",
+      "notes": "Signed: J. Doe"
+    }
+  ]
+}
+
+### Failure: scan validation (future time / missing signature) -> 400
+POST {{baseUrl}}/api/v1/shipments/APX-12345678/scans
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "scans": [
+    {
+      "id": "5fa85f64-5717-4562-b3fc-2c963f66afa8",
+      "trackingNumber": "APX-12345678",
+      "scanType": "Delivered",
+      "courierId": "courier-001",
+      "location": "Depot A",
+      "scannedAtUtc": "2099-01-01T00:00:00Z",
+      "notes": ""
+    }
+  ]
+}
+
+### Success: scan history -> 200
+GET {{baseUrl}}/api/v1/shipments/APX-12345678/scans
+Authorization: Bearer {{devToken}}
+
+# ---------- v2 ----------
+
+### Success: v2 shipment with recipient object + latestScan -> 200
+GET {{baseUrl}}/api/v2/shipments/APX-12345678
+Authorization: Bearer {{devToken}}
+
+### Partner endpoint: missing API key -> 401
+GET {{baseUrl}}/api/v2/partner/shipments/APX-12345678
+
+### Partner endpoint: invalid API key -> 401
+GET {{baseUrl}}/api/v2/partner/shipments/APX-12345678
+X-Api-Key: wrong-key
+
+### Partner endpoint: valid API key -> 200
+GET {{baseUrl}}/api/v2/partner/shipments/APX-12345678
+X-Api-Key: {{partnerApiKey}}
+
+# ---------- Auth cases ----------
+
+### Missing token -> 401
+GET {{baseUrl}}/api/v2/shipments/APX-12345678
+
+### Wrong role (Courier token on Admin-only DELETE) -> 403
+DELETE {{baseUrl}}/api/v2/shipments/APX-12345678
+Authorization: Bearer {{courierToken}}
