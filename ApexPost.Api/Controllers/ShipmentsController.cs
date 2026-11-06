@@ -263,6 +263,19 @@ public class ShipmentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UploadScans(string trackingNumber, [FromBody] ScanUploadRequest request)
     {
+        // Courier may upload scans only under their own courierId claim
+        var courierIdClaim = User.FindFirst("courierId")?.Value;
+        if (!string.IsNullOrEmpty(courierIdClaim) &&
+            request.Scans.Any(s => !string.Equals(s.CourierId, courierIdClaim, StringComparison.OrdinalIgnoreCase)))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+            {
+                Title = "Forbidden",
+                Detail = "Scans may only be uploaded under your own courierId",
+                Status = StatusCodes.Status403Forbidden
+            });
+        }
+
         // Convert DTOs to domain objects
         var scans = request.Scans.Select(dto => new ShipmentScan
         {

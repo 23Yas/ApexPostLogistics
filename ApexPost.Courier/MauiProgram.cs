@@ -42,6 +42,12 @@ public static class MauiProgram
 
 		builder.Services.AddSingleton<OfflineSyncService>();
 
+		// Pages
+		builder.Services.AddTransient<ApexPost.Courier.Pages.LoginPage>();
+		builder.Services.AddTransient<ApexPost.Courier.Pages.NewScanPage>();
+		builder.Services.AddTransient<ApexPost.Courier.Pages.PendingScansPage>();
+		builder.Services.AddTransient<ApexPost.Courier.Pages.SyncStatusPage>();
+
 #if DEBUG
 		builder.Logging.AddDebug();
 #endif

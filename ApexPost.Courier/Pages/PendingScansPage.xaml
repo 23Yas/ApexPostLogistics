@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ApexPost.Courier.Pages.PendingScansPage"
+             Title="Pending Scans">
+    <VerticalStackLayout Padding="20" Spacing="10">
+        <Label x:Name="PendingCountLabel" FontSize="24" FontAttributes="Bold" />
+        <CollectionView x:Name="PendingList" SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <VerticalStackLayout Padding="5" Spacing="2">
+                        <Label Text="{Binding TrackingNumber}" FontAttributes="Bold" />
+                        <Label Text="{Binding ScanType}" FontSize="12" />
+                        <Label Text="{Binding Location}" FontSize="12" TextColor="Gray" />
+                    </VerticalStackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+        <Button Text="Sync Now" Clicked="OnSyncClicked" />
+    </VerticalStackLayout>
+</ContentPage>
