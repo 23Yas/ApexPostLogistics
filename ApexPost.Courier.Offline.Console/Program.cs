@@ -22,6 +22,7 @@ database.CreateIndexes();
 int pendingCount = 0;
 database.RegisterChangeListener(changedIds =>
 {
+    Console.WriteLine($"[Listener] Changed document IDs: {string.Join(", ", changedIds)}");
     // Refresh pending count when documents change
     Task.Run(async () =>
     {

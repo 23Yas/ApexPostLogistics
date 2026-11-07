@@ -41,3 +41,15 @@ public static class BusinessRules
             _ => 0m
         };
 }
+
+/// <summary>Shipment lifecycle statuses shared by the API and the courier sync flow.</summary>
+public static class ShipmentStatusRules
+{
+    public static readonly IReadOnlySet<string> KnownStatuses = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "Created", "PickedUp", "InTransit", "OutForDelivery", "Delivered", "Failed"
+    };
+
+    public static bool IsKnownStatus(string? status)
+        => status is not null && KnownStatuses.Contains(status);
+}

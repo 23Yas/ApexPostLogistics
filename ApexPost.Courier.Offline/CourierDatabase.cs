@@ -38,7 +38,7 @@ public sealed class CourierDatabase : IDisposable
             }
 
             var changedIds = new HashSet<string>(changes.DocumentIDs);
-            _logger?.LogInformation("Documents changed: {Count} changes", changedIds.Count);
+            _logger?.LogInformation("Changed document IDs: {Ids}", string.Join(", ", changedIds));
             onChanged(changedIds);
         });
 

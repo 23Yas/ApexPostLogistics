@@ -5,7 +5,7 @@
     "fromDocument": {
       "json": "contracts/v2.json",
       "output": null,
-      "newLineBehavior": "CarriageReturnLineFeed"
+      "newLineBehavior": "Auto"
     }
   },
   "codeGenerators": {
@@ -45,7 +45,7 @@
       "generateTypeContracts": true,
       "templateDirectory": null,
       "output": "ApexPost.Client/Generated/ApexPostClient.g.cs",
-      "newLineBehavior": "CarriageReturnLineFeed"
+      "newLineBehavior": "Auto"
     }
   }
 }

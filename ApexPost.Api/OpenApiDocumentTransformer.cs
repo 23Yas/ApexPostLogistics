@@ -4,14 +4,16 @@ using Microsoft.OpenApi;
 namespace ApexPost.Api;
 
 /// <summary>
-/// Sets the OpenAPI document info (title, description, version, contact)
-/// and declares the Bearer security scheme used by JWT-authenticated endpoints.
+/// Sets the OpenAPI document info (title, description, version, contact),
+/// declares the Bearer security scheme, and filters each named document
+/// ("v1" / "v2") to only the routes of that API version.
 /// </summary>
 public sealed class ApexPostOpenApiTransformer : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        var isV2 = context.DocumentName.Contains("v2", StringComparison.OrdinalIgnoreCase);
+        var isV2 = string.Equals(context.DocumentName, "v2", StringComparison.OrdinalIgnoreCase);
+        var routePrefix = isV2 ? "/api/v2/" : "/api/v1/";
 
         document.Info.Title = "ApexPost Logistics API";
         document.Info.Description = isV2
@@ -23,6 +25,12 @@ public sealed class ApexPostOpenApiTransformer : IOpenApiDocumentTransformer
             Name = "ApexPost API Team",
             Email = "api-team@apexpost.local"
         };
+
+        // Keep only the paths belonging to this document's API version.
+        foreach (var path in document.Paths.Keys.Where(p => !p.StartsWith(routePrefix, StringComparison.OrdinalIgnoreCase)).ToList())
+        {
+            document.Paths.Remove(path);
+        }
 
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();

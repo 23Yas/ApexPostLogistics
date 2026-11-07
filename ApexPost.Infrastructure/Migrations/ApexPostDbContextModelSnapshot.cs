@@ -17,7 +17,7 @@ namespace ApexPost.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -573,12 +573,11 @@ namespace ApexPost.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("BranchCode")
-                        .IsRequired()
                         .HasMaxLength(32)
                         .IsUnicode(false)
                         .HasColumnType("varchar(32)");
 
-                    b.Property<Guid>("CounterTransactionId")
+                    b.Property<Guid?>("CounterTransactionId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
@@ -601,6 +600,27 @@ namespace ApexPost.Infrastructure.Migrations
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("RecipientAddress")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("RecipientCity")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RecipientName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RecipientPhone")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<string>("ServiceLevel")
                         .IsRequired()
@@ -625,7 +645,7 @@ namespace ApexPost.Infrastructure.Migrations
                     b.Property<decimal>("WeightKg")
                         .HasColumnType("decimal(8,2)");
 
-                    b.Property<int>("ZoneId")
+                    b.Property<int?>("ZoneId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -643,10 +663,72 @@ namespace ApexPost.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_Shipments_Price_NonNegative", "Price >= 0");
 
-                            t.HasCheckConstraint("CK_Shipments_Status_Valid", "Status IN ('Created','InTransit','Delivered','Returned')");
+                            t.HasCheckConstraint("CK_Shipments_Status_Valid", "Status IN ('Created','PickedUp','InTransit','OutForDelivery','Delivered','Failed','Returned')");
 
-                            t.HasCheckConstraint("CK_Shipments_Weight_Range", "WeightKg > 0 AND WeightKg <= 30");
+                            t.HasCheckConstraint("CK_Shipments_Weight_Range", "WeightKg > 0 AND WeightKg <= 70");
                         });
+                });
+
+            modelBuilder.Entity("ApexPost.Core.Domain.ShipmentScan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CourierId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("CreatedBy")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasDefaultValue("system");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset?>("ModifiedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ScanType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTimeOffset>("ScannedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("TrackingNumber")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrackingNumber");
+
+                    b.ToTable("ShipmentScans", (string)null);
                 });
 
             modelBuilder.Entity("ApexPost.Core.Domain.ShippingRate", b =>
@@ -1148,20 +1230,17 @@ namespace ApexPost.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("BranchCode")
                         .HasPrincipalKey("Code")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ApexPost.Core.Domain.CounterTransaction", null)
                         .WithMany()
                         .HasForeignKey("CounterTransactionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ApexPost.Core.Domain.ShippingZone", null)
                         .WithMany()
                         .HasForeignKey("ZoneId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("ApexPost.Core.Domain.ShippingRate", b =>

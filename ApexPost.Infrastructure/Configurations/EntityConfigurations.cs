@@ -283,18 +283,24 @@ public sealed class ShipmentConfiguration : IEntityTypeConfiguration<Shipment>
     {
         entity.ToTable("Shipments", table =>
         {
-            table.HasCheckConstraint("CK_Shipments_Weight_Range", "WeightKg > 0 AND WeightKg <= 30");
+            table.HasCheckConstraint("CK_Shipments_Weight_Range", "WeightKg > 0 AND WeightKg <= 70");
             table.HasCheckConstraint("CK_Shipments_Price_NonNegative", "Price >= 0");
-            table.HasCheckConstraint("CK_Shipments_Status_Valid", "Status IN ('Created','InTransit','Delivered','Returned')");
+            table.HasCheckConstraint("CK_Shipments_Status_Valid", "Status IN ('Created','PickedUp','InTransit','OutForDelivery','Delivered','Failed','Returned')");
         });
         entity.HasKey(x => x.Id);
-        entity.Property(x => x.BranchCode).AsBranchCode();
+        entity.Property(x => x.BranchCode)
+            .HasConversion(ApexPostValueConverters.BranchCodeNullableConverter)
+            .HasMaxLength(32).IsUnicode(false);
         entity.Property(x => x.ServiceLevel).HasConversion<string>().HasMaxLength(32).IsUnicode(false).IsRequired();
         entity.Property(x => x.WeightKg).HasColumnType("decimal(8,2)");
         entity.Property(x => x.Price).HasColumnType("decimal(18,2)");
         entity.Property(x => x.TrackingReference).HasMaxLength(40).IsUnicode(false).IsRequired();
         entity.HasIndex(x => x.TrackingReference).IsUnique();
         entity.Property(x => x.Status).HasMaxLength(32).IsUnicode(false).HasDefaultValue("Created");
+        entity.Property(x => x.RecipientName).HasMaxLength(200).IsRequired();
+        entity.Property(x => x.RecipientPhone).HasMaxLength(32).IsUnicode(false).IsRequired();
+        entity.Property(x => x.RecipientAddress).HasMaxLength(400).IsRequired();
+        entity.Property(x => x.RecipientCity).HasMaxLength(100).IsRequired();
         entity.HasOne<CounterTransaction>().WithMany().HasForeignKey(x => x.CounterTransactionId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchCode).HasPrincipalKey(b => b.Code).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne<ShippingZone>().WithMany().HasForeignKey(x => x.ZoneId).OnDelete(DeleteBehavior.Restrict);
@@ -342,6 +348,23 @@ public sealed class IdentityVerificationRecordConfiguration : IEntityTypeConfigu
         entity.HasOne<Staff>().WithMany().HasForeignKey(x => x.StaffId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne<CounterTransaction>().WithMany().HasForeignKey(x => x.TransactionId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchCode).HasPrincipalKey(b => b.Code).OnDelete(DeleteBehavior.Restrict);
+        entity.WithAuditColumns();
+    }
+}
+
+public sealed class ShipmentScanConfiguration : IEntityTypeConfiguration<ShipmentScan>
+{
+    public void Configure(EntityTypeBuilder<ShipmentScan> entity)
+    {
+        entity.ToTable("ShipmentScans");
+        entity.HasKey(x => x.Id);
+        entity.Property(x => x.TrackingNumber).HasMaxLength(40).IsUnicode(false).IsRequired();
+        entity.HasIndex(x => x.TrackingNumber);
+        entity.Property(x => x.ScanType).HasConversion<string>().HasMaxLength(32).IsUnicode(false).IsRequired();
+        entity.Property(x => x.CourierId).HasMaxLength(64).IsUnicode(false).IsRequired();
+        entity.Property(x => x.Location).HasMaxLength(200).IsRequired();
+        entity.Property(x => x.ScannedAtUtc).HasColumnType("datetimeoffset");
+        entity.Property(x => x.Notes).HasMaxLength(1000);
         entity.WithAuditColumns();
     }
 }

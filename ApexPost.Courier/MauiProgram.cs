@@ -22,7 +22,12 @@ public static class MauiProgram
 
 		// Offline store (Part A)
 		var dbPath = Path.Combine(FileSystem.AppDataDirectory, "apexpost_courier");
-		builder.Services.AddSingleton(_ => new CourierDatabase(dbPath));
+		builder.Services.AddSingleton(sp =>
+		{
+			var db = new CourierDatabase(dbPath, sp.GetService<ILogger<CourierDatabase>>());
+			db.CreateIndexes();
+			return db;
+		});
 		builder.Services.AddSingleton<IScanRepository, CouchbaseScanRepository>();
 		builder.Services.AddSingleton<IShipmentUploader, FakeShipmentUploader>();
 		builder.Services.AddSingleton<OutboxService>();

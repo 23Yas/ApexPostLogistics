@@ -8,6 +8,9 @@ public static class ApexPostValueConverters
     public static ValueConverter<BranchCode, string> BranchCodeConverter { get; } =
         new(v => v.Value, v => new BranchCode(v));
 
+    public static ValueConverter<BranchCode?, string?> BranchCodeNullableConverter { get; } =
+        new(v => v.HasValue ? v.Value.Value : null, v => v == null ? (BranchCode?)null : new BranchCode(v));
+
     public static ValueConverter<Sku, string> SkuConverter { get; } =
         new(v => v.Value, v => new Sku(v));
 

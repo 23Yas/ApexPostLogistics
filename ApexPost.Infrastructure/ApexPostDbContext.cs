@@ -27,6 +27,7 @@ public sealed class ApexPostDbContext : DbContext
     public DbSet<ShippingZone> ShippingZones => Set<ShippingZone>();
     public DbSet<ShippingRate> ShippingRates => Set<ShippingRate>();
     public DbSet<Shipment> Shipments => Set<Shipment>();
+    public DbSet<ShipmentScan> ShipmentScans => Set<ShipmentScan>();
     public DbSet<CounterTransaction> CounterTransactions => Set<CounterTransaction>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<MoneyOrder> MoneyOrders => Set<MoneyOrder>();

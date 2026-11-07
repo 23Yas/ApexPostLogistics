@@ -55,6 +55,7 @@ public sealed class CouchbaseScanRepository : IScanRepository
         var collection = _database.DefaultCollection;
 
         var mutableDoc = new MutableDocument(docId);
+        mutableDoc.SetString("id", scan.Id.ToString());
         mutableDoc.SetString("trackingNumber", scan.TrackingNumber);
         mutableDoc.SetString("scanType", scan.ScanType.ToString());
         mutableDoc.SetString("courierId", scan.CourierId);
@@ -82,6 +83,7 @@ public sealed class CouchbaseScanRepository : IScanRepository
             var document = collection.GetDocument(docId);
             var mutableDoc = document.ToMutable();
 
+            mutableDoc.SetString("id", scan.Id.ToString());
             mutableDoc.SetString("trackingNumber", scan.TrackingNumber);
             mutableDoc.SetString("scanType", scan.ScanType.ToString());
             mutableDoc.SetString("courierId", scan.CourierId);
@@ -107,29 +109,18 @@ public sealed class CouchbaseScanRepository : IScanRepository
 
     private void Delete(Guid id)
     {
-        //var docId = $"scan::{id}";
+        var docId = $"scan::{id}";
         var collection = _database.DefaultCollection;
-        Console.Write("Employee ID to delete: ");
-        //string id = ReadRequired();
 
-        var document = collection.GetDocument(id.ToString());
+        var document = collection.GetDocument(docId);
         if (document is null)
         {
-            Console.WriteLine("Employee not found.");
-            return;
-        }
-
-        Console.Write($"Confirm deletion of '{id}'? (y/n): ");
-        string? confirmation = Console.ReadLine();
-
-        if (!string.Equals(confirmation?.Trim(), "y", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.WriteLine("Deletion cancelled.");
+            _logger?.LogWarning("Scan {ScanId} not found for deletion", id);
             return;
         }
 
         collection.Delete(document);
-        Console.WriteLine("Employee deleted successfully.");
+        _logger?.LogInformation("Deleted scan {ScanId}", id);
     }
 
     public Task<List<ShipmentScan>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -310,6 +301,12 @@ public sealed class CouchbaseScanRepository : IScanRepository
         try
         {
             var dict = document.ToDictionary();
+            if (!dict.ContainsKey("id") || dict["id"] is null)
+            {
+                dict["id"] = document.Id.StartsWith("scan::", StringComparison.Ordinal)
+                    ? document.Id["scan::".Length..]
+                    : document.Id;
+            }
             return DeserializeFromDictionary(dict);
         }
         catch (Exception ex)
@@ -330,8 +327,8 @@ public sealed class CouchbaseScanRepository : IScanRepository
                 ScanType = Enum.Parse<ScanType>(dict["scanType"].ToString()!),
                 CourierId = dict["courierId"].ToString()!,
                 Location = dict["location"].ToString()!,
-                ScannedAtUtc = DateTimeOffset.Parse(dict["scannedAtUtc"].ToString()!),
-                Notes = dict["notes"].ToString()!,
+                ScannedAtUtc = ParseTimestamp(dict["scannedAtUtc"]),
+                Notes = dict["notes"]?.ToString() ?? string.Empty,
                 SyncStatus = Enum.Parse<SyncStatus>(dict["syncStatus"].ToString()!)
             };
         }
@@ -340,5 +337,16 @@ public sealed class CouchbaseScanRepository : IScanRepository
             _logger?.LogError(ex, "Failed to deserialize scan from dictionary");
             return null;
         }
+    }
+
+    private static DateTimeOffset ParseTimestamp(object? value)
+    {
+        return value switch
+        {
+            DateTimeOffset dto => dto,
+            DateTime dt => new DateTimeOffset(dt, TimeSpan.Zero),
+            string s => DateTimeOffset.Parse(s, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind),
+            _ => DateTimeOffset.MinValue
+        };
     }
 }

@@ -45,30 +45,120 @@ public sealed class ShipmentService
         return await _shipmentRepository.DeleteAsync(trackingNumber, cancellationToken);
     }
 
-    public async Task<(int accepted, int duplicatesSkipped, int rejected)> UploadScansAsync(
+    public async Task<IReadOnlyCollection<ShipmentScan>> GetScansAsync(string trackingNumber, CancellationToken cancellationToken = default)
+    {
+        return await _shipmentRepository.GetScansByTrackingNumberAsync(trackingNumber, cancellationToken);
+    }
+
+    public async Task<ShipmentScan?> GetLatestScanAsync(string trackingNumber, CancellationToken cancellationToken = default)
+    {
+        return await _shipmentRepository.GetLatestScanAsync(trackingNumber, cancellationToken);
+    }
+
+    /// <summary>
+    /// Idempotent bulk upload of offline scans. Each scan carries its client-generated ID;
+    /// re-uploading the same ID is counted as a duplicate and never creates a second row.
+    /// Every scan is validated for tracking-number match, timestamp sanity and status-transition
+    /// consistency; failures are returned with a reason code.
+    /// </summary>
+    public async Task<ScanUploadOutcome> UploadScansAsync(
         string trackingNumber,
-        List<ShipmentScan> scans,
+        IReadOnlyCollection<ShipmentScan> scans,
         CancellationToken cancellationToken = default)
     {
-        int accepted = 0;
-        int duplicatesSkipped = 0;
-        int rejected = 0;
+        var outcome = new ScanUploadOutcome();
 
-        // Check if shipment exists
         var shipment = await _shipmentRepository.GetByTrackingNumberAsync(trackingNumber, cancellationToken);
         if (shipment == null)
         {
-            return (0, 0, scans.Count);
+            foreach (var scan in scans)
+            {
+                outcome.Rejections.Add(new ScanRejection(scan.Id, "shipment_not_found"));
+            }
+            outcome.Rejected = scans.Count;
+            return outcome;
         }
 
-        // Process each scan (idempotent upload based on scan ID)
+        var currentStatus = shipment.Status;
         foreach (var scan in scans)
         {
-            // For Part B, we'll just accept all scans since we don't have a scan repository yet
-            // In a real implementation, we would check if the scan ID already exists
-            accepted++;
+            var rejection = await ValidateAndPersistScanAsync(trackingNumber, currentStatus, scan, cancellationToken);
+            if (rejection is null)
+            {
+                outcome.Accepted++;
+                if (scan.ScanType == ScanType.Pickup && currentStatus == "Created") currentStatus = "PickedUp";
+                else if (scan.ScanType == ScanType.InTransit && currentStatus == "PickedUp") currentStatus = "InTransit";
+                else if (scan.ScanType == ScanType.Delivered) currentStatus = "Delivered";
+                else if (scan.ScanType == ScanType.Failed) currentStatus = "Failed";
+            }
+            else if (rejection == DuplicateMarker)
+            {
+                outcome.DuplicatesSkipped++;
+            }
+            else
+            {
+                outcome.Rejected++;
+                outcome.Rejections.Add(new ScanRejection(scan.Id, rejection));
+            }
         }
 
-        return (accepted, duplicatesSkipped, rejected);
+        return outcome;
+    }
+
+    private const string DuplicateMarker = "__duplicate__";
+
+    private async Task<string?> ValidateAndPersistScanAsync(
+        string trackingNumber, string status, ShipmentScan scan, CancellationToken cancellationToken)
+    {
+        if (!string.Equals(scan.TrackingNumber, trackingNumber, StringComparison.OrdinalIgnoreCase))
+        {
+            return "tracking_number_mismatch";
+        }
+
+        if (scan.ScannedAtUtc > DateTimeOffset.UtcNow.AddMinutes(5))
+        {
+            return "scan_time_in_future";
+        }
+
+        if (await _shipmentRepository.GetScanByIdAsync(scan.Id, cancellationToken) is not null)
+        {
+            return DuplicateMarker;
+        }
+
+        // Scan-type / status consistency. Scans are facts recorded offline, so early scan
+        // types are accepted while the shipment is still in a compatible state; terminal
+        // scans (Delivered/Failed) require the shipment to be OutForDelivery first.
+        var (allowed, targetStatus) = scan.ScanType switch
+        {
+            ScanType.Pickup => (status is "Created" or "PickedUp" or "InTransit" or "OutForDelivery", status == "Created" ? "PickedUp" : null),
+            ScanType.InTransit => (status is "PickedUp" or "InTransit" or "OutForDelivery", status == "PickedUp" ? "InTransit" : null),
+            ScanType.Delivered => (status == "OutForDelivery", "Delivered"),
+            ScanType.Failed => (status == "OutForDelivery", "Failed"),
+            _ => (false, null)
+        };
+
+        if (!allowed)
+        {
+            return "invalid_status_transition";
+        }
+
+        await _shipmentRepository.AddScanAsync(scan, cancellationToken);
+
+        if (targetStatus is not null)
+        {
+            await _shipmentRepository.UpdateStatusAsync(trackingNumber, targetStatus, cancellationToken);
+        }
+
+        return null;
     }
 }
+
+public sealed class ScanUploadOutcome
+{
+    public int Accepted { get; set; }
+    public int DuplicatesSkipped { get; set; }
+    public int Rejected { get; set; }
+    public List<ScanRejection> Rejections { get; } = new();
+}
+
+public sealed record ScanRejection(Guid ScanId, string Reason);

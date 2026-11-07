@@ -29,8 +29,10 @@ public sealed class ShipmentRepository : IShipmentRepository
             query = query.Where(s => s.Status == status);
         }
 
-        // Note: City filtering would require joins with other tables if shipment has city info
-        // For now, we'll just implement page/size and status filtering
+        if (!string.IsNullOrEmpty(city))
+        {
+            query = query.Where(s => s.RecipientCity == city);
+        }
 
         return await query
             .OrderBy(s => s.CreatedAtUtc)
@@ -59,6 +61,10 @@ public sealed class ShipmentRepository : IShipmentRepository
         // Update editable fields
         existing.WeightKg = shipment.WeightKg;
         existing.Price = shipment.Price;
+        if (!string.IsNullOrEmpty(shipment.RecipientName)) existing.RecipientName = shipment.RecipientName;
+        if (!string.IsNullOrEmpty(shipment.RecipientPhone)) existing.RecipientPhone = shipment.RecipientPhone;
+        if (!string.IsNullOrEmpty(shipment.RecipientAddress)) existing.RecipientAddress = shipment.RecipientAddress;
+        if (!string.IsNullOrEmpty(shipment.RecipientCity)) existing.RecipientCity = shipment.RecipientCity;
         // Status is updated via separate method
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -105,6 +111,37 @@ public sealed class ShipmentRepository : IShipmentRepository
         _context.Shipments.Remove(shipment);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    public async Task<ShipmentScan?> GetScanByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _context.ShipmentScans
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+    }
+
+    public async Task AddScanAsync(ShipmentScan scan, CancellationToken cancellationToken = default)
+    {
+        _context.ShipmentScans.Add(scan);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<ShipmentScan>> GetScansByTrackingNumberAsync(string trackingNumber, CancellationToken cancellationToken = default)
+    {
+        return await _context.ShipmentScans
+            .AsNoTracking()
+            .Where(s => s.TrackingNumber == trackingNumber)
+            .OrderBy(s => s.ScannedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<ShipmentScan?> GetLatestScanAsync(string trackingNumber, CancellationToken cancellationToken = default)
+    {
+        return await _context.ShipmentScans
+            .AsNoTracking()
+            .Where(s => s.TrackingNumber == trackingNumber)
+            .OrderByDescending(s => s.ScannedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private static bool IsValidStatusTransition(string currentStatus, string newStatus)

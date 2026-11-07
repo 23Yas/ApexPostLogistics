@@ -10,4 +10,9 @@ public interface IShipmentRepository
     Task<Shipment?> UpdateAsync(string trackingNumber, Shipment shipment, CancellationToken cancellationToken = default);
     Task<bool> UpdateStatusAsync(string trackingNumber, string newStatus, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(string trackingNumber, CancellationToken cancellationToken = default);
+
+    Task<ShipmentScan?> GetScanByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task AddScanAsync(ShipmentScan scan, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<ShipmentScan>> GetScansByTrackingNumberAsync(string trackingNumber, CancellationToken cancellationToken = default);
+    Task<ShipmentScan?> GetLatestScanAsync(string trackingNumber, CancellationToken cancellationToken = default);
 }

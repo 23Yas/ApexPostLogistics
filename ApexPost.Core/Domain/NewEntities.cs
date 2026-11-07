@@ -62,14 +62,18 @@ public sealed class ShippingRate
 public sealed class Shipment
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public Guid CounterTransactionId { get; init; }
-    public BranchCode BranchCode { get; init; }
-    public int ZoneId { get; init; }
+    public Guid? CounterTransactionId { get; init; }
+    public BranchCode? BranchCode { get; init; }
+    public int? ZoneId { get; init; }
     public ServiceLevel ServiceLevel { get; init; }
     public decimal WeightKg { get; set; }
     public decimal Price { get; set; }
     public string TrackingReference { get; init; } = string.Empty;
     public string Status { get; set; } = "Created";
+    public string RecipientName { get; set; } = string.Empty;
+    public string RecipientPhone { get; set; } = string.Empty;
+    public string RecipientAddress { get; set; } = string.Empty;
+    public string RecipientCity { get; set; } = string.Empty;
     public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
 }
 

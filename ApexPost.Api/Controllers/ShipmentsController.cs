@@ -12,7 +12,7 @@ namespace ApexPost.Api.Controllers;
 /// Shipments API controller for managing shipment lifecycle
 /// </summary>
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/v1/shipments")]
 [Authorize]
 public class ShipmentsController : ControllerBase
 {
@@ -116,6 +116,10 @@ public class ShipmentsController : ControllerBase
             WeightKg = request.WeightKg,
             Price = request.Price,
             Status = "Created",
+            RecipientName = request.RecipientName,
+            RecipientPhone = request.RecipientPhone,
+            RecipientAddress = request.RecipientAddress,
+            RecipientCity = request.RecipientCity,
             CreatedAtUtc = DateTimeOffset.UtcNow
         };
 
@@ -151,7 +155,11 @@ public class ShipmentsController : ControllerBase
         {
             TrackingReference = request.TrackingNumber,
             WeightKg = request.WeightKg,
-            Price = request.Price
+            Price = request.Price,
+            RecipientName = request.RecipientName ?? string.Empty,
+            RecipientPhone = request.RecipientPhone ?? string.Empty,
+            RecipientAddress = request.RecipientAddress ?? string.Empty,
+            RecipientCity = request.RecipientCity ?? string.Empty
         };
 
         var updated = await _shipmentService.UpdateAsync(trackingNumber, shipment);
@@ -184,6 +192,16 @@ public class ShipmentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateStatus(string trackingNumber, [FromBody] UpdateStatusRequest request)
     {
+        if (!ShipmentStatusRules.IsKnownStatus(request.Status))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Unknown status",
+                Detail = $"'{request.Status}' is not a valid shipment status",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
         var success = await _shipmentService.UpdateStatusAsync(trackingNumber, request.Status);
         if (!success)
         {
@@ -265,14 +283,34 @@ public class ShipmentsController : ControllerBase
     {
         // Courier may upload scans only under their own courierId claim
         var courierIdClaim = User.FindFirst("courierId")?.Value;
-        if (!string.IsNullOrEmpty(courierIdClaim) &&
-            request.Scans.Any(s => !string.Equals(s.CourierId, courierIdClaim, StringComparison.OrdinalIgnoreCase)))
+        if (string.IsNullOrEmpty(courierIdClaim))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+            {
+                Title = "Forbidden",
+                Detail = "A courierId claim is required to upload scans",
+                Status = StatusCodes.Status403Forbidden
+            });
+        }
+
+        if (request.Scans.Any(s => !string.Equals(s.CourierId, courierIdClaim, StringComparison.OrdinalIgnoreCase)))
         {
             return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
             {
                 Title = "Forbidden",
                 Detail = "Scans may only be uploaded under your own courierId",
                 Status = StatusCodes.Status403Forbidden
+            });
+        }
+
+        var shipment = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
+        if (shipment == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Shipment not found",
+                Detail = $"No shipment found with tracking number {trackingNumber}",
+                Status = StatusCodes.Status404NotFound
             });
         }
 
@@ -288,13 +326,16 @@ public class ShipmentsController : ControllerBase
             Notes = dto.Notes
         }).ToList();
 
-        var (accepted, duplicatesSkipped, rejected) = await _shipmentService.UploadScansAsync(trackingNumber, scans);
+        var outcome = await _shipmentService.UploadScansAsync(trackingNumber, scans);
 
         var response = new ScanUploadResponse
         {
-            Accepted = accepted,
-            DuplicatesSkipped = duplicatesSkipped,
-            Rejected = rejected
+            Accepted = outcome.Accepted,
+            DuplicatesSkipped = outcome.DuplicatesSkipped,
+            Rejected = outcome.Rejected,
+            Rejections = outcome.Rejections
+                .Select(r => new ScanRejectionDto { ScanId = r.ScanId, Reason = r.Reason })
+                .ToList()
         };
 
         return Ok(response);
@@ -312,9 +353,19 @@ public class ShipmentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetScans(string trackingNumber)
     {
-        // For now, return empty list since we don't have scan persistence in SQL yet
-        // This will be implemented when we add scan storage
-        return Ok(Array.Empty<ShipmentScan>());
+        var shipment = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
+        if (shipment == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Shipment not found",
+                Detail = $"No shipment found with tracking number {trackingNumber}",
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+
+        var scans = await _shipmentService.GetScansAsync(trackingNumber);
+        return Ok(scans);
     }
 
     private static DomainScanType MapScanType(ScanType dtoType)
@@ -335,4 +386,11 @@ public sealed class ScanUploadResponse
     public int Accepted { get; init; }
     public int DuplicatesSkipped { get; init; }
     public int Rejected { get; init; }
+    public IReadOnlyList<ScanRejectionDto> Rejections { get; init; } = Array.Empty<ScanRejectionDto>();
+}
+
+public sealed class ScanRejectionDto
+{
+    public Guid ScanId { get; init; }
+    public string Reason { get; init; } = string.Empty;
 }

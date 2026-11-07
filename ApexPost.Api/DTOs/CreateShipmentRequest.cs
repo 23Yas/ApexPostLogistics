@@ -25,5 +25,6 @@ public sealed class CreateShipmentRequest
     [Required(ErrorMessage = "Recipient city is required")]
     public string RecipientCity { get; init; } = string.Empty;
 
+    [Range(0, 100000, ErrorMessage = "Price must be non-negative")]
     public decimal Price { get; init; }
 }

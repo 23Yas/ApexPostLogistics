@@ -23,8 +23,17 @@ builder.Services.AddScoped<ShipmentService>();
 // Add controllers
 builder.Services.AddControllers();
 
-// Add JWT Bearer authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "dev-only-signing-key-not-for-production-32chars";
+// Add JWT Bearer authentication. Signing key/issuer/audience come from configuration
+// or User Secrets - never committed. A well-known dev key is used only in Development.
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrEmpty(jwtKey))
+{
+    if (!builder.Environment.IsDevelopment())
+    {
+        throw new InvalidOperationException("Jwt:Key must be configured outside Development (use User Secrets or environment variables).");
+    }
+    jwtKey = "dev-only-signing-key-not-for-production-32chars";
+}
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "apexpost-dev";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "apexpost-courier";
 
@@ -45,15 +54,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Built-in OpenAPI generator (single generator - Swagger UI only renders it)
-builder.Services.AddOpenApi(options =>
+// Built-in OpenAPI generator (single generator - Swagger UI only renders it).
+// Two named documents; the transformer filters each to its own /api/v{n} routes.
+builder.Services.AddOpenApi("v1", options =>
+{
+    options.AddDocumentTransformer<ApexPostOpenApiTransformer>();
+});
+builder.Services.AddOpenApi("v2", options =>
 {
     options.AddDocumentTransformer<ApexPostOpenApiTransformer>();
 });
 
 // Swagger UI hosts the interactive docs; it reads the built-in OpenAPI documents.
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(); // UI hosting only - no document generation
 
 // Add global exception handler
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -73,8 +86,7 @@ app.Use(async (context, next) =>
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi("/openapi/v1.json");
-    app.MapOpenApi("/openapi/v2.json");
+    app.MapOpenApi("/openapi/{documentName}.json");
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/openapi/v1.json", "v1 (deprecated)");

@@ -11,5 +11,11 @@ public sealed class UpdateShipmentRequest
     [Range(0.1, 70, ErrorMessage = "Weight must be between 0.1 and 70 kg")]
     public decimal WeightKg { get; init; }
 
+    [Range(0, 100000, ErrorMessage = "Price must be non-negative")]
     public decimal Price { get; init; }
+
+    public string? RecipientName { get; init; }
+    public string? RecipientPhone { get; init; }
+    public string? RecipientAddress { get; init; }
+    public string? RecipientCity { get; init; }
 }

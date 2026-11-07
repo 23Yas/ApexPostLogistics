@@ -7,7 +7,7 @@ namespace ApexPost.Api.Controllers.V2;
 /// Partner read-only API with X-Api-Key header authentication
 /// </summary>
 [ApiController]
-[Route("api/v2/partner/[controller]")]
+[Route("api/v2/partner/shipments")]
 public class PartnerShipmentsController : ControllerBase
 {
     private readonly ShipmentService _shipmentService;
