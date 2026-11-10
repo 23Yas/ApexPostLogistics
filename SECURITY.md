@@ -2,7 +2,7 @@
 
 ## Authentication design
 
-- **JWT Bearer tokens** issued for couriers and admins. Validation checks issuer, audience, lifetime and signing key — all read from configuration (`Jwt:Issuer`, `Jwt:Audience`, `Jwt:Key`). Development tokens are issued via `dotnet user-jwts` and carry a `courierId` claim plus a `Courier` or `Admin` role.
+- **JWT Bearer tokens** issued for couriers and admins. Validation checks issuer, audience, lifetime and signing key — all read from configuration (`Jwt:Issuer`, `Jwt:Audience`, `Jwt:Key`). Development tokens are issued via the Development-only `POST /dev/token` endpoint and carry a `courierId` claim plus a `Courier` or `Admin` role.
 - **Roles:** scan upload and status PATCH require `Courier`; DELETE requires `Admin`; GET requires any authenticated user. Missing/invalid/expired tokens return 401; wrong role returns 403 — both as `ProblemDetails`. A courier may upload scans only under their own `courierId` claim.
 - **Partner API keys:** the read-only route `GET /api/v2/partner/shipments/{trackingNumber}` validates an `X-Api-Key` header against keys stored in User Secrets / configuration (`PartnerApiKeys` section). Keys are never committed. Missing or invalid keys return 401.
 
@@ -12,7 +12,7 @@
 - **Client Credentials** (partner systems): a partner server authenticates directly with its client id/secret to the token endpoint and receives an access token — no user interaction.
 - **Roles:** the *identity provider* authenticates the user and issues tokens; the *access token* (JWT) proves identity/roles to the API on every call; the *refresh token* obtains new access tokens without re-login and is stored securely, rotated on use.
 - **Why API keys are weaker than OAuth2:** API keys are static shared secrets — no expiry, no audience scoping, no user identity, and rotation requires redeploying every consumer. OAuth2 tokens are short-lived, scoped, carry identity, and can be revoked centrally.
-- **Moving to a real IdP:** replace `dotnet user-jwts` dev tokens with an OIDC provider (e.g. Entra ID, Auth0, Keycloak); point `Jwt:Issuer`/`Jwt:Audience`/signing keys at the IdP's metadata/JWKS; map IdP roles/groups to Courier/Admin; use the partner client-credentials flow for machine access.
+- **Moving to a real IdP:** replace the `/dev/token` dev tokens with an OIDC provider (e.g. Entra ID, Auth0, Keycloak); point `Jwt:Issuer`/`Jwt:Audience`/signing keys at the IdP's metadata/JWKS; map IdP roles/groups to Courier/Admin; use the partner client-credentials flow for machine access.
 
 ## Transport layer security
 

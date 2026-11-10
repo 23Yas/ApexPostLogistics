@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ApexPost.Api.DTOs;
 
@@ -7,6 +8,7 @@ public sealed class ScanUploadRequest
     public List<ShipmentScanDto> Scans { get; init; } = new();
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ScanType
 {
     Pickup,

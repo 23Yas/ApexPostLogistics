@@ -14,8 +14,20 @@ public sealed class UpdateShipmentRequest
     [Range(0, 100000, ErrorMessage = "Price must be non-negative")]
     public decimal Price { get; init; }
 
-    public string? RecipientName { get; init; }
-    public string? RecipientPhone { get; init; }
-    public string? RecipientAddress { get; init; }
-    public string? RecipientCity { get; init; }
+    [Required(ErrorMessage = "Recipient name is required")]
+    [StringLength(200)]
+    public string RecipientName { get; init; } = string.Empty;
+
+    [Required(ErrorMessage = "Recipient phone is required")]
+    [Phone(ErrorMessage = "Recipient phone must be a valid phone number")]
+    [StringLength(32)]
+    public string RecipientPhone { get; init; } = string.Empty;
+
+    [Required(ErrorMessage = "Recipient address is required")]
+    [StringLength(400)]
+    public string RecipientAddress { get; init; } = string.Empty;
+
+    [Required(ErrorMessage = "Recipient city is required")]
+    [StringLength(100)]
+    public string RecipientCity { get; init; } = string.Empty;
 }

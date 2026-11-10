@@ -8,11 +8,15 @@ public partial class PendingScansPage : ContentPage
     private readonly IScanRepository _repository;
     private readonly OfflineSyncService _syncService;
 
-    public PendingScansPage(IScanRepository repository, OfflineSyncService syncService)
+    public PendingScansPage(IScanRepository repository, CourierDatabase database, OfflineSyncService syncService)
     {
         InitializeComponent();
         _repository = repository;
         _syncService = syncService;
+
+        // Live pending count: the Couchbase change listener fires on every local
+        // document change (new scan, sync status update, delete).
+        database.RegisterChangeListener(_ => MainThread.BeginInvokeOnMainThread(async () => await RefreshAsync()));
     }
 
     protected override async void OnAppearing()

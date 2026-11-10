@@ -47,7 +47,7 @@ public sealed class ApexPostOpenApiTransformer : IOpenApiDocumentTransformer
         // Global Bearer security requirement so Swagger UI's Authorize button applies to all operations.
         document.Security =
         [
-            new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("Bearer")] = [] }
+            new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("Bearer", document)] = [] }
         ];
 
         document.Components ??= new OpenApiComponents();

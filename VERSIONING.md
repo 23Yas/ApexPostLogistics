@@ -16,10 +16,10 @@ URL-segment versioning: `/api/v{version}/shipments`. Both versions share the sam
 
 ## Deprecation and sunset plan for v1
 
-- v1 is deprecated as of this release and responses include `api-supported-versions` / `api-deprecated-versions` headers (`ReportApiVersions = true`).
-- Sunset: v1 will be removed 6 months after v2 GA, giving partner integrators time to migrate. During the window, v1 returns `Warning` headers on responses.
+- v1 is deprecated as of this release and responses include `api-supported-versions` / `api-deprecated-versions` headers added by response middleware.
+- Sunset: v1 will be removed 6 months after v2 GA. During the window v1 operations are marked `deprecated: true` in the OpenAPI document and shown as "v1 (deprecated)" in Swagger UI.
 - Contract snapshots are stored in `/contracts/v1.json` and `/contracts/v2.json`.
 
 ## OpenAPI documents
 
-`/openapi/v1.json` and `/openapi/v2.json` are generated per API-version group; Swagger UI shows both, labelled "v1 (deprecated)" and "v2".
+`/openapi/v1.json` and `/openapi/v2.json` are generated as named OpenAPI documents filtered to each `/api/v{n}` route group; Swagger UI shows both, labelled "v1 (deprecated)" and "v2".

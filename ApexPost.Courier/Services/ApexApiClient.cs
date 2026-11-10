@@ -14,7 +14,7 @@ public static class ApiJson
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public static readonly JsonSerializerContext Context = new ApiJsonContext();
+    public static readonly ApiJsonContext Context = new ApiJsonContext();
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, Converters = [typeof(JsonStringEnumConverter)])]
@@ -121,6 +121,9 @@ public sealed class AuthHeaderHandler : DelegatingHandler
 /// <summary>Typed API client for the v2 ApexPost API.</summary>
 public sealed class ApexApiClient
 {
+    /// <summary>Raised when the API returns 401 so the app can return to Login.</summary>
+    public event Func<Task>? Unauthorized;
+
     private readonly HttpClient _http;
 
     public ApexApiClient(HttpClient http)
@@ -133,14 +136,14 @@ public sealed class ApexApiClient
         var response = await _http.GetAsync($"api/v2/shipments/{trackingNumber}", ct);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<ShipmentResponseV2>(ApiJson.Options, ct);
+        return JsonSerializer.Deserialize<ShipmentResponseV2>(await response.Content.ReadAsStringAsync(ct), ApiJson.Context.ShipmentResponseV2);
     }
 
     public async Task<ShipmentResponseV2> CreateShipmentAsync(CreateShipmentRequest request, CancellationToken ct = default)
     {
         var response = await _http.PostAsJsonAsync("api/v2/shipments", request, ApiJson.Options, ct);
         await EnsureSuccessWithProblemDetails(response, ct);
-        return (await response.Content.ReadFromJsonAsync<ShipmentResponseV2>(ApiJson.Options, ct))!;
+        return JsonSerializer.Deserialize<ShipmentResponseV2>(await response.Content.ReadAsStringAsync(ct), ApiJson.Context.ShipmentResponseV2)!;
     }
 
     public async Task<ScanUploadResponse> UploadScansAsync(string trackingNumber, List<ShipmentScanDto> scans, CancellationToken ct = default)
@@ -148,22 +151,26 @@ public sealed class ApexApiClient
         var response = await _http.PostAsJsonAsync($"api/v2/shipments/{trackingNumber}/scans",
             new ScanUploadRequest { Scans = scans }, ApiJson.Options, ct);
         await EnsureSuccessWithProblemDetails(response, ct);
-        return (await response.Content.ReadFromJsonAsync<ScanUploadResponse>(ApiJson.Options, ct))!;
+        return JsonSerializer.Deserialize<ScanUploadResponse>(await response.Content.ReadAsStringAsync(ct), ApiJson.Context.ScanUploadResponse)!;
     }
 
     /// <summary>Reads ProblemDetails on error responses and throws a friendly exception.</summary>
-    private static async Task EnsureSuccessWithProblemDetails(HttpResponseMessage response, CancellationToken ct)
+    private async Task EnsureSuccessWithProblemDetails(HttpResponseMessage response, CancellationToken ct)
     {
         if (response.IsSuccessStatusCode) return;
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            // Expired/invalid token: clear it so the app returns to Login.
+            // Expired/invalid token: clear it and notify the app to return to Login.
             SecureStorage.Remove("auth_token");
+            if (Unauthorized is not null)
+            {
+                await Unauthorized.Invoke();
+            }
         }
         string? detail = null;
         try
         {
-            var problem = await response.Content.ReadFromJsonAsync<ProblemDetailsDto>(ApiJson.Options, ct);
+            var problem = JsonSerializer.Deserialize<ProblemDetailsDto>(await response.Content.ReadAsStringAsync(ct), ApiJson.Context.ProblemDetailsDto);
             detail = problem?.Detail ?? problem?.Title;
         }
         catch { /* malformed body - fall through */ }

@@ -34,9 +34,9 @@ public static class MauiProgram
 		// Base URL: configuration value wins; platform defaults cover emulator/desktop dev.
 		var apiBaseUrl = builder.Configuration["ApexApi:BaseUrl"];
 #if ANDROID
-		apiBaseUrl ??= "http://10.0.2.2:5254";   // Android emulator -> host loopback
+		apiBaseUrl ??= "https://10.0.2.2:7145";   // Android emulator -> host loopback (HTTPS; dev cert bypassed in DEBUG)
 #elif WINDOWS
-		apiBaseUrl ??= "http://localhost:5254";  // Windows desktop -> local API
+		apiBaseUrl ??= "https://localhost:7145";  // Windows desktop -> local API (HTTPS)
 #else
 		apiBaseUrl ??= "https://localhost:7145";
 #endif
@@ -48,7 +48,21 @@ public static class MauiProgram
 			client.Timeout = TimeSpan.FromSeconds(30); // overall request timeout
 		})
 		.AddHttpMessageHandler<AuthHeaderHandler>()
-		.AddPolicyHandler(GetResiliencePipeline());
+		.AddPolicyHandler(request =>
+			// Retry only idempotent calls: safe methods plus the scan upload,
+			// which is idempotent by design (server de-duplicates by scan ID).
+			IsRetryable(request) ? GetResiliencePipeline() : Policy.NoOpAsync<HttpResponseMessage>());
+
+#if DEBUG
+		// Development-only: trust the local ASP.NET dev certificate so the
+		// Android emulator / Windows desktop can call https://localhost.
+		// Never compiled into Release builds.
+		builder.Services.AddHttpClient<ApexApiClient>()
+			.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+			{
+				ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+			});
+#endif
 
 		builder.Services.AddTransient<IShipmentUploader, ApiShipmentUploader>();
 		builder.Services.AddSingleton<OfflineSyncService>();
@@ -66,6 +80,21 @@ public static class MauiProgram
 		return builder.Build();
 	}
 
+	private static bool IsRetryable(HttpRequestMessage request)
+	{
+		if (request.Method == HttpMethod.Get || request.Method == HttpMethod.Put
+			|| request.Method == HttpMethod.Patch || request.Method == HttpMethod.Delete)
+		{
+			return true;
+		}
+		// POST /api/v2/shipments/{tracking}/scans is idempotent (scan IDs de-duplicate).
+		return request.Method == HttpMethod.Post
+			&& request.RequestUri?.AbsolutePath.EndsWith("/scans", StringComparison.OrdinalIgnoreCase) == true;
+	}
+
+	private static readonly Microsoft.Extensions.Logging.ILogger _resilienceLogger =
+		Microsoft.Extensions.Logging.LoggerFactory.Create(_ => { }).CreateLogger("Resilience");
+
 	private static IAsyncPolicy<HttpResponseMessage> GetResiliencePipeline()
 	{
 		// Per-attempt timeout: each individual try times out after 10s.
@@ -81,7 +110,7 @@ public static class MauiProgram
 				retryCount: 3,
 				sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500)),
 				onRetry: (outcome, delay, attempt, ctx) =>
-					Console.WriteLine($"[Retry] Attempt {attempt} after {delay.TotalSeconds:F1}s: {outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()}"));
+					_resilienceLogger.LogWarning("[Retry] Attempt {Attempt} after {Delay}s: {Reason}", attempt, delay.TotalSeconds, outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()));
 
 		var circuitBreaker = Policy<HttpResponseMessage>
 			.Handle<HttpRequestException>()
@@ -90,9 +119,9 @@ public static class MauiProgram
 			.CircuitBreakerAsync(
 				handledEventsAllowedBeforeBreaking: 5,
 				durationOfBreak: TimeSpan.FromSeconds(30),
-				onBreak: (outcome, duration) => Console.WriteLine($"[CircuitBreaker] OPEN for {duration.TotalSeconds}s"),
-				onReset: () => Console.WriteLine("[CircuitBreaker] CLOSED"),
-				onHalfOpen: () => Console.WriteLine("[CircuitBreaker] HALF-OPEN"));
+				onBreak: (outcome, duration) => _resilienceLogger.LogWarning("[CircuitBreaker] OPEN for {Seconds}s", duration.TotalSeconds),
+				onReset: () => _resilienceLogger.LogInformation("[CircuitBreaker] CLOSED"),
+				onHalfOpen: () => _resilienceLogger.LogInformation("[CircuitBreaker] HALF-OPEN"));
 
 		// Wrap order: circuit breaker outermost, then retry, then per-attempt timeout innermost.
 		return Policy.WrapAsync(circuitBreaker, retry, perAttemptTimeout);

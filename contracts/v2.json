@@ -963,7 +963,12 @@
         }
       },
       "ScanType": {
-        "type": "integer"
+        "enum": [
+          "Pickup",
+          "InTransit",
+          "Delivered",
+          "Failed"
+        ]
       },
       "ScanUploadRequest": {
         "type": "object",
@@ -1203,7 +1208,11 @@
       },
       "UpdateShipmentRequest": {
         "required": [
-          "trackingNumber"
+          "trackingNumber",
+          "recipientName",
+          "recipientPhone",
+          "recipientAddress",
+          "recipientCity"
         ],
         "type": "object",
         "properties": {
@@ -1232,28 +1241,24 @@
             "format": "double"
           },
           "recipientName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string"
           },
           "recipientPhone": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "maxLength": 32,
+            "minLength": 0,
+            "type": "string"
           },
           "recipientAddress": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "maxLength": 400,
+            "minLength": 0,
+            "type": "string"
           },
           "recipientCity": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
           }
         }
       },
@@ -1279,7 +1284,9 @@
     }
   },
   "security": [
-    { }
+    {
+      "Bearer": [ ]
+    }
   ],
   "tags": [
     {

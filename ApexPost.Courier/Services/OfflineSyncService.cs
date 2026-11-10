@@ -87,8 +87,22 @@ public sealed class OfflineSyncService
 							await _scanRepository.UpdateAsync(scan, ct);
 						}
 					}
-					catch (Exception ex)
+					catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
 					{
+						// Only transport-level failures open the circuit; 4xx/5xx responses
+						// surface as HttpRequestException with a status - treat 5xx as breaker-worthy.
+						if (ex is HttpRequestException { StatusCode: { } code } && (int)code < 500)
+						{
+							_logger.LogWarning(ex, "Batch upload rejected for {Tracking} ({Code})", group.Key, code);
+							summary.Failed += scans.Count;
+							LastFailureCount += scans.Count;
+							foreach (var scan in scans)
+							{
+								scan.SyncStatus = SyncStatus.Failed;
+								await _scanRepository.UpdateAsync(scan, ct);
+							}
+							continue;
+						}
 						_logger.LogWarning(ex, "Batch upload failed for {Tracking}", group.Key);
 						CircuitState = "Open";
 						summary.Failed += scans.Count;

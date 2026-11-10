@@ -2,19 +2,22 @@
 using Microsoft.Extensions.DependencyInjection;
 
 // Console consumer for the generated ApexPost.Client SDK (built from contracts/v2.json).
+// Pass a bearer token via the APEX_TOKEN environment variable or --token arg
+// (obtain one from POST /dev/token in Development).
+var token = Environment.GetEnvironmentVariable("APEX_TOKEN")
+    ?? (args.Length > 1 && args[0] == "--token" ? args[1] : null);
+
 var services = new ServiceCollection();
 services.AddHttpClient<Client>(client =>
 {
     client.BaseAddress = new Uri("https://localhost:7145"); // dev API base URL
-    // Bearer token for authenticated endpoints comes from configuration/secrets in real use.
-});
+})
+.AddHttpMessageHandler(() => new BearerHandler(token));
 var provider = services.BuildServiceProvider();
 
 var client = provider.GetRequiredService<Client>();
 const string tracking = "APX-12345678";
-// ScanType values mirror the API enum: 0=Pickup, 1=InTransit, 2=Delivered, 3=Failed.
-const int ScanPickup = 0;
-const int ScanInTransit = 1;
+// ScanType enum values are generated from the contract (Pickup, InTransit, Delivered, Failed).
 
 try
 {
@@ -44,8 +47,8 @@ try
     {
         Scans = new List<ShipmentScanDto>
         {
-            new() { Id = Guid.NewGuid(), TrackingNumber = tracking, ScanType = ScanPickup, CourierId = "courier-001", Location = "Depot A", ScannedAtUtc = DateTimeOffset.UtcNow, Notes = "" },
-            new() { Id = Guid.NewGuid(), TrackingNumber = tracking, ScanType = ScanInTransit, CourierId = "courier-001", Location = "Hub B", ScannedAtUtc = DateTimeOffset.UtcNow, Notes = "" }
+            new() { Id = Guid.NewGuid(), TrackingNumber = tracking, ScanType = ScanType.Pickup, CourierId = "courier-001", Location = "Depot A", ScannedAtUtc = DateTimeOffset.UtcNow, Notes = "" },
+            new() { Id = Guid.NewGuid(), TrackingNumber = tracking, ScanType = ScanType.InTransit, CourierId = "courier-001", Location = "Hub B", ScannedAtUtc = DateTimeOffset.UtcNow, Notes = "" }
         }
     });
     Console.WriteLine($"Accepted: {upload.Accepted}, Duplicates: {upload.DuplicatesSkipped}, Rejected: {upload.Rejected}");
@@ -68,4 +71,19 @@ try
 catch (ApiException ex)
 {
     Console.WriteLine($"API error {ex.StatusCode}: {ex.Message}");
+}
+
+/// <summary>Attaches the bearer token when one is supplied.</summary>
+internal sealed class BearerHandler : DelegatingHandler
+{
+    private readonly string? _token;
+    public BearerHandler(string? token) { _token = token; }
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        if (!string.IsNullOrEmpty(_token))
+        {
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _token);
+        }
+        return base.SendAsync(request, ct);
+    }
 }

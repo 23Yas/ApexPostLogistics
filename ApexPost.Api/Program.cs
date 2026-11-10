@@ -39,7 +39,7 @@ if (string.IsNullOrEmpty(jwtKey))
     {
         throw new InvalidOperationException("Jwt:Key must be configured outside Development (use User Secrets or environment variables).");
     }
-    jwtKey = "dev-only-signing-key-not-for-production-32chars";
+    jwtKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 }
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "apexpost-dev";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "apexpost-courier";

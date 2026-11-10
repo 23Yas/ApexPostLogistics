@@ -1373,6 +1373,24 @@ namespace ApexPost.Client
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ScanType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Pickup")]
+        Pickup = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"InTransit")]
+        InTransit = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Delivered")]
+        Delivered = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Failed")]
+        Failed = 3,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ScanUploadRequest
     {
 
@@ -1532,7 +1550,7 @@ namespace ApexPost.Client
         public string TrackingNumber { get; set; }
 
         [Newtonsoft.Json.JsonProperty("scanType", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public int ScanType { get; set; }
+        public ScanType ScanType { get; set; }
 
         [Newtonsoft.Json.JsonProperty("courierId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string CourierId { get; set; }
@@ -1569,7 +1587,7 @@ namespace ApexPost.Client
         public string TrackingNumber { get; set; }
 
         [Newtonsoft.Json.JsonProperty("scanType", Required = Newtonsoft.Json.Required.Always)]
-        public int ScanType { get; set; }
+        public ScanType ScanType { get; set; }
 
         [Newtonsoft.Json.JsonProperty("courierId", Required = Newtonsoft.Json.Required.Always)]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -1616,16 +1634,24 @@ namespace ApexPost.Client
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
         public double Price { get; set; }
 
-        [Newtonsoft.Json.JsonProperty("recipientName", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonProperty("recipientName", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
         public string RecipientName { get; set; }
 
-        [Newtonsoft.Json.JsonProperty("recipientPhone", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonProperty("recipientPhone", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.StringLength(32)]
         public string RecipientPhone { get; set; }
 
-        [Newtonsoft.Json.JsonProperty("recipientAddress", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonProperty("recipientAddress", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.StringLength(400)]
         public string RecipientAddress { get; set; }
 
-        [Newtonsoft.Json.JsonProperty("recipientCity", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonProperty("recipientCity", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
         public string RecipientCity { get; set; }
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
