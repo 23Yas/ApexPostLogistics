@@ -110,6 +110,9 @@ See `DESIGN.md` for the entity-relationship diagram, delete behaviour and the re
 | `ApexPost.Client.Console` | Console consumer for the generated client |
 | `ApexPost.Courier` | .NET MAUI courier app with offline sync (Part D) |
 | `contracts/` | OpenAPI contract snapshots `v1.json`, `v2.json` |
+| `screenshots/` | Part A–D evidence: query results, listener log, Swagger responses, demo video |
+
+Week 4 work was developed on branches `week4-partA`, `week4-partB`, `week4-partC` and `week4-partD`, each merged into `master`.
 
 ### OpenAPI vs. Swagger UI
 
