@@ -32,6 +32,24 @@ public sealed class ApexPostOpenApiTransformer : IOpenApiDocumentTransformer
             document.Paths.Remove(path);
         }
 
+        // v1 is deprecated: mark every operation so clients and Swagger UI show it.
+        if (!isV2)
+        {
+            foreach (var pathItem in document.Paths.Values)
+            {
+                foreach (var operation in pathItem.Operations.Values)
+                {
+                    operation.Deprecated = true;
+                }
+            }
+        }
+
+        // Global Bearer security requirement so Swagger UI's Authorize button applies to all operations.
+        document.Security =
+        [
+            new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("Bearer")] = [] }
+        ];
+
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
         document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme

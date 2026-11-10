@@ -3,9 +3,13 @@ using ApexPost.Core.Application.Interfaces;
 using ApexPost.Core.Application.Services;
 using ApexPost.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,8 +24,11 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Register services
 builder.Services.AddScoped<ShipmentService>();
 
-// Add controllers
-builder.Services.AddControllers();
+// Add controllers - enums serialize as strings to match the courier app contract
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 // Add JWT Bearer authentication. Signing key/issuer/audience come from configuration
 // or User Secrets - never committed. A well-known dev key is used only in Development.
@@ -48,7 +55,34 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/problem+json";
+                await context.Response.WriteAsJsonAsync(new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Detail = "Missing, invalid or expired bearer token",
+                    Status = StatusCodes.Status401Unauthorized
+                });
+            },
+            OnForbidden = async context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                context.Response.ContentType = "application/problem+json";
+                await context.Response.WriteAsJsonAsync(new ProblemDetails
+                {
+                    Title = "Forbidden",
+                    Detail = "The authenticated user does not have the required role",
+                    Status = StatusCodes.Status403Forbidden
+                });
+            }
         };
     });
 
@@ -107,4 +141,37 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Development-only token issuer so couriers can obtain a JWT without an external IdP.
+// Never enabled outside Development.
+if (app.Environment.IsDevelopment())
+{
+    app.MapPost("/dev/token", (DevTokenRequest? request) =>
+    {
+        var courierId = request?.CourierId ?? "courier-001";
+        var role = string.Equals(request?.Role, "Admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : "Courier";
+
+        var claims = new[]
+        {
+            new Claim("courierId", courierId),
+            new Claim(ClaimTypes.Role, role),
+            new Claim(JwtRegisteredClaimNames.Sub, courierId)
+        };
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+        var token = new JwtSecurityToken(
+            issuer: jwtIssuer,
+            audience: jwtAudience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(8),
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
+
+        return Results.Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token), courierId, role });
+    });
+}
+
 app.Run();
+
+public sealed class DevTokenRequest
+{
+    public string? CourierId { get; set; }
+    public string? Role { get; set; }
+}

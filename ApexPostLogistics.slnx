@@ -2,6 +2,7 @@
   <Project Path="ApexPost.Api/ApexPost.Api.csproj" />
   <Project Path="ApexPost.Application/ApexPost.Application.csproj" Id="30d56e61-a3a1-4434-9fa0-76ba4b7f60c4" />
   <Project Path="ApexPost.Client/ApexPost.Client.csproj" />
+  <Project Path="ApexPost.Client.Console/ApexPost.Client.Console.csproj" />
   <Project Path="ApexPost.Core/ApexPost.Domain.csproj" />
   <Project Path="ApexPost.Courier.Offline.Console/ApexPost.Courier.Offline.Console.csproj" />
   <Project Path="ApexPost.Courier.Offline/ApexPost.Courier.Offline.csproj" />

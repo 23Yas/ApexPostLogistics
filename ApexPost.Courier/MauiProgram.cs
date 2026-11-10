@@ -21,19 +21,25 @@ public static class MauiProgram
 			});
 
 		// Offline store (Part A)
-		var dbPath = Path.Combine(FileSystem.AppDataDirectory, "apexpost_courier");
 		builder.Services.AddSingleton(sp =>
 		{
-			var db = new CourierDatabase(dbPath, sp.GetService<ILogger<CourierDatabase>>());
+			var db = new CourierDatabase("apexpost_courier", sp.GetService<ILogger<CourierDatabase>>());
 			db.CreateIndexes();
 			return db;
 		});
 		builder.Services.AddSingleton<IScanRepository, CouchbaseScanRepository>();
-		builder.Services.AddSingleton<IShipmentUploader, FakeShipmentUploader>();
 		builder.Services.AddSingleton<OutboxService>();
 
-		// Typed API client via IHttpClientFactory with resilience pipeline
-		var apiBaseUrl = builder.Configuration["ApexApi:BaseUrl"] ?? "https://localhost:7xxx";
+		// Typed API client via IHttpClientFactory with resilience pipeline.
+		// Base URL: configuration value wins; platform defaults cover emulator/desktop dev.
+		var apiBaseUrl = builder.Configuration["ApexApi:BaseUrl"];
+#if ANDROID
+		apiBaseUrl ??= "http://10.0.2.2:5254";   // Android emulator -> host loopback
+#elif WINDOWS
+		apiBaseUrl ??= "http://localhost:5254";  // Windows desktop -> local API
+#else
+		apiBaseUrl ??= "https://localhost:7145";
+#endif
 
 		builder.Services.AddTransient<AuthHeaderHandler>();
 		builder.Services.AddHttpClient<ApexApiClient>(client =>
@@ -44,6 +50,7 @@ public static class MauiProgram
 		.AddHttpMessageHandler<AuthHeaderHandler>()
 		.AddPolicyHandler(GetResiliencePipeline());
 
+		builder.Services.AddTransient<IShipmentUploader, ApiShipmentUploader>();
 		builder.Services.AddSingleton<OfflineSyncService>();
 
 		// Pages

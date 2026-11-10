@@ -63,7 +63,7 @@ public class ShipmentsController : ControllerBase
     /// </summary>
     /// <param name="trackingNumber">The tracking number of the shipment</param>
     /// <returns>Shipment details</returns>
-    [HttpGet("{trackingNumber}", Name = "GetShipment")]
+    [HttpGet("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "GetShipment")]
     [Tags("Shipments")]
     [EndpointSummary("Get shipment by tracking number")]
     [ProducesResponseType(typeof(Shipment), StatusCodes.Status200OK)]
@@ -133,7 +133,7 @@ public class ShipmentsController : ControllerBase
     /// <param name="trackingNumber">The tracking number of the shipment</param>
     /// <param name="request">Shipment update request</param>
     /// <returns>Updated shipment</returns>
-    [HttpPut("{trackingNumber}", Name = "UpdateShipment")]
+    [HttpPut("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "UpdateShipment")]
     [Tags("Shipments")]
     [EndpointSummary("Update shipment details")]
     [ProducesResponseType(typeof(Shipment), StatusCodes.Status200OK)]
@@ -182,7 +182,7 @@ public class ShipmentsController : ControllerBase
     /// <param name="trackingNumber">The tracking number of the shipment</param>
     /// <param name="request">Status update request</param>
     /// <returns>Success or conflict response</returns>
-    [HttpPatch("{trackingNumber}/status", Name = "UpdateShipmentStatus")]
+    [HttpPatch("{trackingNumber:regex(^APX-\\d{{8}}$)}/status", Name = "UpdateShipmentStatus")]
     [Authorize(Roles = "Courier")]
     [Tags("Shipments")]
     [EndpointSummary("Update shipment status")]
@@ -232,7 +232,7 @@ public class ShipmentsController : ControllerBase
     /// </summary>
     /// <param name="trackingNumber">The tracking number of the shipment</param>
     /// <returns>No content on success</returns>
-    [HttpDelete("{trackingNumber}", Name = "DeleteShipment")]
+    [HttpDelete("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "DeleteShipment")]
     [Authorize(Roles = "Admin")]
     [Tags("Shipments")]
     [EndpointSummary("Delete a shipment")]
@@ -272,7 +272,7 @@ public class ShipmentsController : ControllerBase
     /// <param name="trackingNumber">The tracking number of the shipment</param>
     /// <param name="request">Scan upload request with list of scans</param>
     /// <returns>Upload summary with accepted, duplicates skipped, and rejected counts</returns>
-    [HttpPost("{trackingNumber}/scans", Name = "UploadScans")]
+    [HttpPost("{trackingNumber:regex(^APX-\\d{{8}}$)}/scans", Name = "UploadScans")]
     [Authorize(Roles = "Courier")]
     [Tags("Scans")]
     [EndpointSummary("Bulk upload shipment scans")]
@@ -346,7 +346,7 @@ public class ShipmentsController : ControllerBase
     /// </summary>
     /// <param name="trackingNumber">The tracking number of the shipment</param>
     /// <returns>List of scans for the shipment</returns>
-    [HttpGet("{trackingNumber}/scans", Name = "GetScans")]
+    [HttpGet("{trackingNumber:regex(^APX-\\d{{8}}$)}/scans", Name = "GetScans")]
     [Tags("Scans")]
     [EndpointSummary("Get shipment scan history")]
     [ProducesResponseType(typeof(IEnumerable<ShipmentScan>), StatusCodes.Status200OK)]

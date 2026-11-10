@@ -6,25 +6,12 @@
     xmlns:pages="clr-namespace:ApexPost.Courier.Pages"
     Title="ApexPost Courier">
 
-    <ShellContent
-        Title="Login"
-        ContentTemplate="{DataTemplate pages:LoginPage}"
-        Route="login" />
-
-    <ShellContent
-        Title="Pending"
-        ContentTemplate="{DataTemplate pages:PendingScansPage}"
-        Route="pending" />
-
-    <ShellContent
-        Title="New Scan"
-        ContentTemplate="{DataTemplate pages:NewScanPage}"
-        Route="newscan" />
-
-    <ShellContent
-        Title="Sync Status"
-        ContentTemplate="{DataTemplate pages:SyncStatusPage}"
-        Route="syncstatus" />
+    <FlyoutItem Title="Account">
+        <ShellContent
+            Title="Login"
+            ContentTemplate="{DataTemplate pages:LoginPage}"
+            Route="login" />
+    </FlyoutItem>
 
     <TabBar>
         <ShellContent Title="Pending" Route="pending" ContentTemplate="{DataTemplate pages:PendingScansPage}" />

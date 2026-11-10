@@ -62,7 +62,7 @@ public class ShipmentsV2Controller : ControllerBase
     /// <summary>
     /// Get a single shipment by tracking number (v2)
     /// </summary>
-    [HttpGet("{trackingNumber}", Name = "GetShipmentV2")]
+    [HttpGet("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "GetShipmentV2")]
     [Tags("Shipments")]
     [EndpointSummary("Get shipment by tracking number (v2)")]
     [ProducesResponseType(typeof(ShipmentResponseV2), StatusCodes.Status200OK)]
@@ -124,9 +124,92 @@ public class ShipmentsV2Controller : ControllerBase
     }
 
     /// <summary>
+    /// Replace editable shipment details (v2)
+    /// </summary>
+    [HttpPut("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "UpdateShipmentV2")]
+    [Tags("Shipments")]
+    [EndpointSummary("Update shipment details (v2)")]
+    [ProducesResponseType(typeof(ShipmentResponseV2), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateShipment(string trackingNumber, [FromBody] UpdateShipmentRequest request)
+    {
+        if (request.TrackingNumber != trackingNumber)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Tracking number mismatch",
+                Detail = "Tracking number in URL must match request body",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        var shipment = new Shipment
+        {
+            TrackingReference = request.TrackingNumber,
+            WeightKg = request.WeightKg,
+            Price = request.Price,
+            RecipientName = request.RecipientName ?? string.Empty,
+            RecipientPhone = request.RecipientPhone ?? string.Empty,
+            RecipientAddress = request.RecipientAddress ?? string.Empty,
+            RecipientCity = request.RecipientCity ?? string.Empty
+        };
+
+        var updated = await _shipmentService.UpdateAsync(trackingNumber, shipment);
+        if (updated == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Shipment not found",
+                Detail = $"No shipment found with tracking number {trackingNumber}",
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+
+        return Ok(await MapToV2ResponseAsync(updated));
+    }
+
+    /// <summary>
+    /// Delete a shipment - only while status is Created (v2, Admin only)
+    /// </summary>
+    [HttpDelete("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "DeleteShipmentV2")]
+    [Authorize(Roles = "Admin")]
+    [Tags("Shipments")]
+    [EndpointSummary("Delete a shipment (v2)")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteShipment(string trackingNumber)
+    {
+        var success = await _shipmentService.DeleteAsync(trackingNumber);
+        if (!success)
+        {
+            var existing = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
+            if (existing == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Shipment not found",
+                    Detail = $"No shipment found with tracking number {trackingNumber}",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            return Conflict(new ProblemDetails
+            {
+                Title = "Cannot delete shipment",
+                Detail = $"Shipment with status {existing.Status} cannot be deleted. Only shipments with status 'Created' can be deleted.",
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+
+        return NoContent();
+    }
+
+    /// <summary>
     /// Update shipment status only (v2)
     /// </summary>
-    [HttpPatch("{trackingNumber}/status", Name = "UpdateShipmentStatusV2")]
+    [HttpPatch("{trackingNumber:regex(^APX-\\d{{8}}$)}/status", Name = "UpdateShipmentStatusV2")]
     [Authorize(Roles = "Courier")]
     [Tags("Shipments")]
     [EndpointSummary("Update shipment status (v2)")]
@@ -174,7 +257,7 @@ public class ShipmentsV2Controller : ControllerBase
     /// <summary>
     /// Bulk upload of offline scans (v2)
     /// </summary>
-    [HttpPost("{trackingNumber}/scans", Name = "UploadScansV2")]
+    [HttpPost("{trackingNumber:regex(^APX-\\d{{8}}$)}/scans", Name = "UploadScansV2")]
     [Authorize(Roles = "Courier")]
     [Tags("Scans")]
     [EndpointSummary("Bulk upload shipment scans (v2)")]
@@ -243,7 +326,7 @@ public class ShipmentsV2Controller : ControllerBase
     /// <summary>
     /// Get scan history for a shipment (v2)
     /// </summary>
-    [HttpGet("{trackingNumber}/scans", Name = "GetScansV2")]
+    [HttpGet("{trackingNumber:regex(^APX-\\d{{8}}$)}/scans", Name = "GetScansV2")]
     [Tags("Scans")]
     [EndpointSummary("Get shipment scan history (v2)")]
     [ProducesResponseType(typeof(IEnumerable<ShipmentScan>), StatusCodes.Status200OK)]

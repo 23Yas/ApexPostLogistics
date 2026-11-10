@@ -4,9 +4,10 @@ namespace ApexPost.Courier;
 
 public partial class App : Application
 {
-	public App()
+	public App(IServiceProvider services)
 	{
 		InitializeComponent();
+		services.GetRequiredService<Services.OfflineSyncService>().StartConnectivityListener();
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)

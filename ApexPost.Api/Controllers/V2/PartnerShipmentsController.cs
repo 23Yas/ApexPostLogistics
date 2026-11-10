@@ -27,7 +27,7 @@ public class PartnerShipmentsController : ControllerBase
     /// <summary>
     /// Get shipment by tracking number (partner API key required)
     /// </summary>
-    [HttpGet("{trackingNumber}", Name = "GetPartnerShipment")]
+    [HttpGet("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "GetPartnerShipment")]
     [Tags("Partner")]
     [EndpointSummary("Partner read-only shipment lookup")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]

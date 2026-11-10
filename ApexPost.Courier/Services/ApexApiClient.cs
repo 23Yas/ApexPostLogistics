@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Microsoft.Maui.Storage;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -20,6 +21,9 @@ public static class ApiJson
 [JsonSerializable(typeof(ShipmentResponseV2))]
 [JsonSerializable(typeof(CreateShipmentRequest))]
 [JsonSerializable(typeof(ScanUploadRequest))]
+[JsonSerializable(typeof(ScanUploadResponse))]
+[JsonSerializable(typeof(ScanRejectionDto))]
+[JsonSerializable(typeof(ShipmentScanDto))]
 [JsonSerializable(typeof(ProblemDetailsDto))]
 public partial class ApiJsonContext : JsonSerializerContext { }
 
@@ -84,6 +88,13 @@ public sealed class ScanUploadResponse
     public int Accepted { get; set; }
     public int DuplicatesSkipped { get; set; }
     public int Rejected { get; set; }
+    public List<ScanRejectionDto>? Rejections { get; set; }
+}
+
+public sealed class ScanRejectionDto
+{
+    public Guid ScanId { get; set; }
+    public string Reason { get; set; } = string.Empty;
 }
 
 public sealed class ProblemDetailsDto
@@ -144,6 +155,11 @@ public sealed class ApexApiClient
     private static async Task EnsureSuccessWithProblemDetails(HttpResponseMessage response, CancellationToken ct)
     {
         if (response.IsSuccessStatusCode) return;
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            // Expired/invalid token: clear it so the app returns to Login.
+            SecureStorage.Remove("auth_token");
+        }
         string? detail = null;
         try
         {

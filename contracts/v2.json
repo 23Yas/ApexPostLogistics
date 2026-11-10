@@ -28,6 +28,7 @@
             "in": "path",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -294,6 +295,7 @@
             "in": "path",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -340,6 +342,169 @@
             }
           }
         }
+      },
+      "put": {
+        "tags": [
+          "Shipments"
+        ],
+        "summary": "Replace editable shipment details (v2)",
+        "operationId": "UpdateShipmentV2",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^APX-\\d{8}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipmentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipmentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentResponseV2"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentResponseV2"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentResponseV2"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Shipments"
+        ],
+        "summary": "Delete a shipment - only while status is Created (v2, Admin only)",
+        "operationId": "DeleteShipmentV2",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^APX-\\d{8}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v2/shipments/{trackingNumber}/status": {
@@ -355,6 +520,7 @@
             "in": "path",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -459,6 +625,7 @@
             "in": "path",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -578,6 +745,7 @@
             "in": "path",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -692,6 +860,23 @@
               "string"
             ],
             "format": "double"
+          }
+        }
+      },
+      "DevTokenRequest": {
+        "type": "object",
+        "properties": {
+          "courierId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -1093,7 +1278,13 @@
       }
     }
   },
+  "security": [
+    { }
+  ],
   "tags": [
+    {
+      "name": "ApexPost.Api"
+    },
     {
       "name": "Shipments"
     },

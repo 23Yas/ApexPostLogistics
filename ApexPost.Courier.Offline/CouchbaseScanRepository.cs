@@ -35,7 +35,7 @@ public sealed class CouchbaseScanRepository : IScanRepository
         try
         {
             var document = collection.GetDocument(docId);
-            return DeserializeScan(document);
+            return document is null ? null : DeserializeScan(document);
         }
         catch (CouchbaseLiteException)
         {
@@ -62,7 +62,8 @@ public sealed class CouchbaseScanRepository : IScanRepository
         mutableDoc.SetString("location", scan.Location);
         mutableDoc.SetDate("scannedAtUtc", scan.ScannedAtUtc.DateTime);
         mutableDoc.SetString("notes", scan.Notes);
-        mutableDoc.SetString("syncStatus", scan.SyncStatus.ToString());
+        // Every new scan is always persisted locally first as Pending.
+        mutableDoc.SetString("syncStatus", SyncStatus.Pending.ToString());
 
         collection.Save(mutableDoc);
         _logger?.LogInformation("Created scan {ScanId} for tracking {TrackingNumber}", scan.Id, scan.TrackingNumber);
@@ -81,6 +82,11 @@ public sealed class CouchbaseScanRepository : IScanRepository
         try
         {
             var document = collection.GetDocument(docId);
+            if (document is null)
+            {
+                _logger?.LogWarning("Scan with ID {ScanId} not found for update", scan.Id);
+                return;
+            }
             var mutableDoc = document.ToMutable();
 
             mutableDoc.SetString("id", scan.Id.ToString());
@@ -133,28 +139,12 @@ public sealed class CouchbaseScanRepository : IScanRepository
         var collection = _database.DefaultCollection;
         var scans = new List<ShipmentScan>();
 
-        using var query = QueryBuilder.Select(
-                SelectResult.All())
-            .From(DataSource.Collection(collection));
-
+        using var query = collection.CreateQuery("SELECT * FROM _");
         var resultSet = query.Execute();
 
         foreach (var result in resultSet.AllResults())
         {
-            var dict = result.GetDictionary(0);
-
-            if (dict == null)
-                continue;
-
-            var dictionary = new Dictionary<string, object>();
-
-            foreach (var key in dict.Keys)
-            {
-                dictionary[key] = dict.GetValue(key);
-            }
-
-            var scan = DeserializeFromDictionary(dictionary);
-
+            var scan = DeserializeFromDictionary(ConvertToDictionary(result.GetDictionary(0)));
             if (scan != null)
             {
                 scans.Add(scan);
@@ -174,31 +164,15 @@ public sealed class CouchbaseScanRepository : IScanRepository
         var collection = _database.DefaultCollection;
         var scans = new List<ShipmentScan>();
 
-        using var query = QueryBuilder.Select(
-                SelectResult.All())
-            .From(DataSource.Collection(collection))
-            .Where(Expression.Property("trackingNumber")
-                .EqualTo(Expression.String(trackingNumber)))
-            .OrderBy(Ordering.Property("scannedAtUtc").Ascending());
+        using var query = collection.CreateQuery(
+            "SELECT * FROM _ WHERE trackingNumber = $trackingNumber ORDER BY scannedAtUtc");
+        query.Parameters = new Parameters().SetString("trackingNumber", trackingNumber);
 
         var resultSet = query.Execute();
 
         foreach (var result in resultSet.AllResults())
         {
-            var dict = result.GetDictionary(0);
-
-            if (dict == null)
-                continue;
-
-            var dictionary = new Dictionary<string, object>();
-
-            foreach (var key in dict.Keys)
-            {
-                dictionary[key] = dict.GetValue(key);
-            }
-
-            var scan = DeserializeFromDictionary(dictionary);
-
+            var scan = DeserializeFromDictionary(ConvertToDictionary(result.GetDictionary(0)));
             if (scan != null)
             {
                 scans.Add(scan);
@@ -223,23 +197,15 @@ public sealed class CouchbaseScanRepository : IScanRepository
         var collection = _database.DefaultCollection;
         var scans = new List<ShipmentScan>();
 
-        using var query = QueryBuilder.Select(
-                SelectResult.All())
-            .From(DataSource.Collection(collection))
-            .Where(Expression.Property("syncStatus")
-                .EqualTo(Expression.String("Pending")));
+        using var query = collection.CreateQuery(
+            "SELECT * FROM _ WHERE syncStatus = $syncStatus");
+        query.Parameters = new Parameters().SetString("syncStatus", SyncStatus.Pending.ToString());
 
         var resultSet = query.Execute();
 
         foreach (var result in resultSet.AllResults())
         {
-            var dict = result.GetDictionary(0);
-
-            if (dict == null)
-                continue;
-
-            var scan = DeserializeFromDictionary(ConvertToDictionary(dict));
-
+            var scan = DeserializeFromDictionary(ConvertToDictionary(result.GetDictionary(0)));
             if (scan != null)
             {
                 scans.Add(scan);
@@ -251,9 +217,13 @@ public sealed class CouchbaseScanRepository : IScanRepository
         return scans;
     }
 
-    private Dictionary<string, object> ConvertToDictionary(DictionaryObject dict)
+    private Dictionary<string, object> ConvertToDictionary(DictionaryObject? dict)
     {
         var dictionary = new Dictionary<string, object>();
+        if (dict is null)
+        {
+            return dictionary;
+        }
 
         foreach (var key in dict.Keys)
         {
@@ -273,12 +243,9 @@ public sealed class CouchbaseScanRepository : IScanRepository
         var collection = _database.DefaultCollection;
         var counts = new Dictionary<ScanType, int>();
 
-        using var query = QueryBuilder.Select(
-                SelectResult.Expression(Expression.Property("scanType")),
-                SelectResult.Expression(Function.Count(Expression.All())))
-            .From(DataSource.Collection(collection))
-            .Where(Expression.Property("courierId").EqualTo(Expression.String(courierId)))
-            .GroupBy(Expression.Property("scanType"));
+        using var query = collection.CreateQuery(
+            "SELECT scanType, COUNT(*) AS scanCount FROM _ WHERE courierId = $courierId GROUP BY scanType");
+        query.Parameters = new Parameters().SetString("courierId", courierId);
 
         var resultSet = query.Execute();
         foreach (var result in resultSet.AllResults())

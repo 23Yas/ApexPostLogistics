@@ -118,7 +118,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       },
       "post": {
         "tags": [
@@ -208,7 +209,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/api/v1/shipments/{trackingNumber}": {
@@ -225,6 +227,7 @@
             "description": "The tracking number of the shipment",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -270,7 +273,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       },
       "put": {
         "tags": [
@@ -285,6 +289,7 @@
             "description": "The tracking number of the shipment",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -371,7 +376,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       },
       "delete": {
         "tags": [
@@ -386,6 +392,7 @@
             "description": "The tracking number of the shipment",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -434,7 +441,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/api/v1/shipments/{trackingNumber}/status": {
@@ -451,6 +459,7 @@
             "description": "The tracking number of the shipment",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -540,7 +549,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/api/v1/shipments/{trackingNumber}/scans": {
@@ -557,6 +567,7 @@
             "description": "The tracking number of the shipment",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -643,7 +654,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       },
       "get": {
         "tags": [
@@ -658,6 +670,7 @@
             "description": "The tracking number of the shipment",
             "required": true,
             "schema": {
+              "pattern": "^APX-\\d{8}$",
               "type": "string"
             }
           }
@@ -712,7 +725,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     }
   },
@@ -772,6 +786,23 @@
               "string"
             ],
             "format": "double"
+          }
+        }
+      },
+      "DevTokenRequest": {
+        "type": "object",
+        "properties": {
+          "courierId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -1173,7 +1204,13 @@
       }
     }
   },
+  "security": [
+    { }
+  ],
   "tags": [
+    {
+      "name": "ApexPost.Api"
+    },
     {
       "name": "Shipments"
     },
