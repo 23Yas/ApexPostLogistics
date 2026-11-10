@@ -50,6 +50,27 @@ public static class ShipmentStatusRules
         "Created", "PickedUp", "InTransit", "OutForDelivery", "Delivered", "Failed"
     };
 
+    private static readonly IReadOnlyDictionary<string, string[]> AllowedTransitions =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["Created"] = new[] { "PickedUp" },
+            ["PickedUp"] = new[] { "InTransit" },
+            ["InTransit"] = new[] { "OutForDelivery" },
+            ["OutForDelivery"] = new[] { "Delivered", "Failed" },
+            ["Delivered"] = Array.Empty<string>(),
+            ["Failed"] = Array.Empty<string>()
+        };
+
     public static bool IsKnownStatus(string? status)
         => status is not null && KnownStatuses.Contains(status);
+
+    /// <summary>Whether a shipment may move from <paramref name="currentStatus"/> to <paramref name="newStatus"/>.</summary>
+    public static bool CanTransition(string? currentStatus, string? newStatus)
+        => currentStatus is not null
+           && newStatus is not null
+           && AllowedTransitions.TryGetValue(currentStatus, out var allowed)
+           && allowed.Contains(newStatus);
+
+    /// <summary>Only shipments that were never picked up may be deleted.</summary>
+    public static bool CanDelete(string? status) => status == "Created";
 }

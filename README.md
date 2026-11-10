@@ -114,6 +114,23 @@ See `DESIGN.md` for the entity-relationship diagram, delete behaviour and the re
 
 Week 4 work was developed on branches `week4-partA`, `week4-partB`, `week4-partC` and `week4-partD`, each merged into `master`.
 
+### Regenerating contracts and the client
+
+Run the API (`dotnet run --project ApexPost.Api`, https profile on port 7145) and save the OpenAPI documents:
+
+```
+curl -k https://localhost:7145/openapi/v1.json -o contracts/v1.json
+curl -k https://localhost:7145/openapi/v2.json -o contracts/v2.json
+```
+
+Then regenerate the C# client from the v2 contract with NSwag (installed as a global tool):
+
+```
+nswag run nswag.json
+```
+
+This reads `contracts/v2.json` (configured in `nswag.json`) and rewrites `ApexPost.Client/Generated/ApexPostClient.g.cs`.
+
 ### OpenAPI vs. Swagger UI
 
 The **OpenAPI specification** is the machine-readable contract (`/openapi/v1.json`, `/openapi/v2.json`) — it describes endpoints, request/response schemas and status codes, and is what SDK generators consume. The **built-in .NET generator** (`AddOpenApi()` / `MapOpenApi()`) produces that document automatically from the code (XML comments, attributes). **Swagger UI** is only the interactive documentation *viewer* at `/swagger` that renders the OpenAPI document and offers "Try it out". Swagger UI adds no specification of its own — it just displays what the generator produced. Only one generator runs: we use the built-in .NET OpenAPI generator; Swashbuckle is used for Swagger UI hosting only, not a second spec generator.

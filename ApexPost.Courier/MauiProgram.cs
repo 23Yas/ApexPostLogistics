@@ -2,8 +2,6 @@
 using ApexPost.Courier.Services;
 using Microsoft.Extensions.Logging;
 using Polly;
-using Polly.Timeout;
-using System.Net;
 
 namespace ApexPost.Courier;
 
@@ -42,16 +40,24 @@ public static class MauiProgram
 #endif
 
 		builder.Services.AddTransient<AuthHeaderHandler>();
+
+		// Singleton so the circuit breaker's state persists across requests; built with
+		// the app's ILogger so retry/breaker events reach the configured logging providers.
+		builder.Services.AddSingleton(sp =>
+			ResiliencePipeline.Create(sp.GetRequiredService<ILogger<ApexApiClient>>()));
+
 		builder.Services.AddHttpClient<ApexApiClient>(client =>
 		{
 			client.BaseAddress = new Uri(apiBaseUrl);
 			client.Timeout = TimeSpan.FromSeconds(30); // overall request timeout
 		})
 		.AddHttpMessageHandler<AuthHeaderHandler>()
-		.AddPolicyHandler(request =>
+		.AddPolicyHandler((sp, request) =>
 			// Retry only idempotent calls: safe methods plus the scan upload,
 			// which is idempotent by design (server de-duplicates by scan ID).
-			IsRetryable(request) ? GetResiliencePipeline() : Policy.NoOpAsync<HttpResponseMessage>());
+			IsRetryable(request)
+				? sp.GetRequiredService<ResiliencePipeline>().Handler
+				: Policy.NoOpAsync<HttpResponseMessage>());
 
 #if DEBUG
 		// Development-only: trust the local ASP.NET dev certificate so the
@@ -92,38 +98,4 @@ public static class MauiProgram
 			&& request.RequestUri?.AbsolutePath.EndsWith("/scans", StringComparison.OrdinalIgnoreCase) == true;
 	}
 
-	private static readonly Microsoft.Extensions.Logging.ILogger _resilienceLogger =
-		Microsoft.Extensions.Logging.LoggerFactory.Create(_ => { }).CreateLogger("Resilience");
-
-	private static IAsyncPolicy<HttpResponseMessage> GetResiliencePipeline()
-	{
-		// Per-attempt timeout: each individual try times out after 10s.
-		// Overall request timeout is enforced by HttpClient.Timeout (30s) above.
-		var perAttemptTimeout = Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromSeconds(10));
-
-		var retry = Policy<HttpResponseMessage>
-			.Handle<HttpRequestException>()
-			.Or<TimeoutRejectedException>()
-			.OrResult(msg => msg.StatusCode == HttpStatusCode.RequestTimeout
-				|| (int)msg.StatusCode >= 500)
-			.WaitAndRetryAsync(
-				retryCount: 3,
-				sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500)),
-				onRetry: (outcome, delay, attempt, ctx) =>
-					_resilienceLogger.LogWarning("[Retry] Attempt {Attempt} after {Delay}s: {Reason}", attempt, delay.TotalSeconds, outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()));
-
-		var circuitBreaker = Policy<HttpResponseMessage>
-			.Handle<HttpRequestException>()
-			.Or<TimeoutRejectedException>()
-			.OrResult(msg => (int)msg.StatusCode >= 500)
-			.CircuitBreakerAsync(
-				handledEventsAllowedBeforeBreaking: 5,
-				durationOfBreak: TimeSpan.FromSeconds(30),
-				onBreak: (outcome, duration) => _resilienceLogger.LogWarning("[CircuitBreaker] OPEN for {Seconds}s", duration.TotalSeconds),
-				onReset: () => _resilienceLogger.LogInformation("[CircuitBreaker] CLOSED"),
-				onHalfOpen: () => _resilienceLogger.LogInformation("[CircuitBreaker] HALF-OPEN"));
-
-		// Wrap order: circuit breaker outermost, then retry, then per-attempt timeout innermost.
-		return Policy.WrapAsync(circuitBreaker, retry, perAttemptTimeout);
-	}
 }

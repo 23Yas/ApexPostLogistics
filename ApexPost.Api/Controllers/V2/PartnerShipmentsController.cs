@@ -1,4 +1,6 @@
 using Asp.Versioning;
+using ApexPost.Api.DTOs.V2;
+using ApexPost.Api.Filters;
 using ApexPost.Core.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,19 +12,17 @@ namespace ApexPost.Api.Controllers.V2;
 [ApiController]
 [ApiVersion(2.0)]
 [Route("api/v2/partner/shipments")]
+[ServiceFilter(typeof(PartnerApiKeyFilter))]
 public class PartnerShipmentsController : ControllerBase
 {
     private readonly ShipmentService _shipmentService;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<PartnerShipmentsController> _logger;
 
     public PartnerShipmentsController(
         ShipmentService shipmentService,
-        IConfiguration configuration,
         ILogger<PartnerShipmentsController> logger)
     {
         _shipmentService = shipmentService;
-        _configuration = configuration;
         _logger = logger;
     }
 
@@ -32,25 +32,12 @@ public class PartnerShipmentsController : ControllerBase
     [HttpGet("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "GetPartnerShipment")]
     [Tags("Partner")]
     [EndpointSummary("Partner read-only shipment lookup")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PartnerShipmentResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetShipment(string trackingNumber)
     {
-        // Validate X-Api-Key header
-        var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        var validKeys = _configuration.GetSection("PartnerApiKeys").Get<string[]>() ?? Array.Empty<string>();
-
-        if (string.IsNullOrEmpty(apiKey) || !validKeys.Contains(apiKey))
-        {
-            return Unauthorized(new ProblemDetails
-            {
-                Title = "Invalid API key",
-                Detail = "Missing or invalid X-Api-Key header",
-                Status = StatusCodes.Status401Unauthorized
-            });
-        }
-
         var shipment = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
         if (shipment == null)
         {
@@ -63,11 +50,11 @@ public class PartnerShipmentsController : ControllerBase
         }
 
         // Return minimal read-only view for partners
-        return Ok(new
+        return Ok(new PartnerShipmentResponse
         {
-            shipment.TrackingReference,
-            shipment.Status,
-            shipment.CreatedAtUtc
+            TrackingReference = shipment.TrackingReference,
+            Status = shipment.Status,
+            CreatedAtUtc = shipment.CreatedAtUtc
         });
     }
 }

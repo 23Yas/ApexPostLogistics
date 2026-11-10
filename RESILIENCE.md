@@ -4,7 +4,7 @@
 
 | Policy | Value | Reason |
 |---|---|---|
-| Retry | 3 attempts, exponential backoff with jitter (e.g. 2s, 4s, 8s ± jitter) | Covers transient mobile-network failures without hammering the API; jitter avoids thundering-herd retries when connectivity returns for many devices at once. |
+| Retry | 3 retries, 4 attempts in total, exponential backoff with jitter (e.g. 2s, 4s, 8s ± jitter) | Covers transient mobile-network failures without hammering the API; jitter avoids thundering-herd retries when connectivity returns for many devices at once. |
 | Retry triggers | Network errors, HTTP 408, HTTP 5xx only | 4xx responses are client errors (bad request, unauthorized, not found) — retrying them can never succeed and may duplicate side effects. |
 | Circuit breaker | Opens after 5 consecutive failures; 30 s break; closes on the first successful call after the break | Stops the app wasting battery/data on a dead API and surfaces "Server unavailable – working offline" quickly. |
 | Timeout | 10 s per attempt; 30 s overall request timeout | Per-attempt timeout keeps a single hung request from consuming the whole budget; the overall timeout bounds the entire operation including retries. |

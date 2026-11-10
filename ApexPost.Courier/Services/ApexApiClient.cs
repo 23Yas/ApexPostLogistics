@@ -6,14 +6,9 @@ using System.Text.Json.Serialization;
 
 namespace ApexPost.Courier.Services;
 
-/// <summary>Shared JSON options matching the v2 API contract (camelCase, enums as strings).</summary>
+/// <summary>Source-generated JSON context matching the v2 API contract (camelCase, enums as strings).</summary>
 public static class ApiJson
 {
-    public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
-
     public static readonly ApiJsonContext Context = new ApiJsonContext();
 }
 
@@ -141,7 +136,7 @@ public sealed class ApexApiClient
 
     public async Task<ShipmentResponseV2> CreateShipmentAsync(CreateShipmentRequest request, CancellationToken ct = default)
     {
-        var response = await _http.PostAsJsonAsync("api/v2/shipments", request, ApiJson.Options, ct);
+        var response = await _http.PostAsJsonAsync("api/v2/shipments", request, ApiJson.Context.CreateShipmentRequest, ct);
         await EnsureSuccessWithProblemDetails(response, ct);
         return JsonSerializer.Deserialize<ShipmentResponseV2>(await response.Content.ReadAsStringAsync(ct), ApiJson.Context.ShipmentResponseV2)!;
     }
@@ -149,7 +144,7 @@ public sealed class ApexApiClient
     public async Task<ScanUploadResponse> UploadScansAsync(string trackingNumber, List<ShipmentScanDto> scans, CancellationToken ct = default)
     {
         var response = await _http.PostAsJsonAsync($"api/v2/shipments/{trackingNumber}/scans",
-            new ScanUploadRequest { Scans = scans }, ApiJson.Options, ct);
+            new ScanUploadRequest { Scans = scans }, ApiJson.Context.ScanUploadRequest, ct);
         await EnsureSuccessWithProblemDetails(response, ct);
         return JsonSerializer.Deserialize<ScanUploadResponse>(await response.Content.ReadAsStringAsync(ct), ApiJson.Context.ScanUploadResponse)!;
     }

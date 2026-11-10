@@ -1,4 +1,5 @@
 using ApexPost.Api;
+using ApexPost.Api.Filters;
 using ApexPost.Core.Application.Interfaces;
 using ApexPost.Core.Application.Services;
 using ApexPost.Infrastructure;
@@ -106,6 +107,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// Partner API key filter for the v2 partner endpoints
+builder.Services.AddScoped<PartnerApiKeyFilter>();
+
 // Built-in OpenAPI generator (single generator - Swagger UI only renders it).
 // Two named documents; the transformer filters each to its own /api/v{n} routes.
 builder.Services.AddOpenApi("v1", options =>
@@ -127,16 +131,8 @@ builder.Services.AddSingleton<IWebHostEnvironment>(builder.Environment);
 
 var app = builder.Build();
 
-// API version headers: ReportApiVersions emits api-supported-versions.
-// v1 is deprecated - mark it only on v1 responses (accurate, not blanket).
-app.Use(async (context, next) =>
-{
-    if (context.Request.Path.StartsWithSegments("/api/v1"))
-    {
-        context.Response.Headers.Append("api-deprecated-versions", "1.0");
-    }
-    await next();
-});
+// API version headers (api-supported-versions / api-deprecated-versions)
+// are emitted by Asp.Versioning's ReportApiVersions - no custom middleware needed.
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())

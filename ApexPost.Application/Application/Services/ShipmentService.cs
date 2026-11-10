@@ -37,11 +37,23 @@ public sealed class ShipmentService
 
     public async Task<bool> UpdateStatusAsync(string trackingNumber, string newStatus, CancellationToken cancellationToken = default)
     {
+        var shipment = await _shipmentRepository.GetByTrackingNumberAsync(trackingNumber, cancellationToken);
+        if (shipment is null || !ShipmentStatusRules.CanTransition(shipment.Status, newStatus))
+        {
+            return false;
+        }
+
         return await _shipmentRepository.UpdateStatusAsync(trackingNumber, newStatus, cancellationToken);
     }
 
     public async Task<bool> DeleteAsync(string trackingNumber, CancellationToken cancellationToken = default)
     {
+        var shipment = await _shipmentRepository.GetByTrackingNumberAsync(trackingNumber, cancellationToken);
+        if (shipment is null || !ShipmentStatusRules.CanDelete(shipment.Status))
+        {
+            return false;
+        }
+
         return await _shipmentRepository.DeleteAsync(trackingNumber, cancellationToken);
     }
 

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly ILogger<GlobalExceptionHandler> _logger;
     private readonly IWebHostEnvironment _env;
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IWebHostEnvironment env)
     {
@@ -38,7 +40,11 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         }
 
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        // WriteAsJsonAsync would force application/json; serialize manually so the
+        // response keeps the RFC 7807 application/problem+json content type.
+        httpContext.Response.ContentType = "application/problem+json";
+        await httpContext.Response.WriteAsync(
+            JsonSerializer.Serialize(problemDetails, JsonOptions), cancellationToken);
 
         return true;
     }

@@ -1,4 +1,6 @@
 ### ApexPost API – dev requests (fictional data only)
+### Get tokens first: POST {{baseUrl}}/dev/token {"courierId":"courier-001","role":"Courier"}
+### Roles: devToken (any), courierToken (Courier), adminToken (Admin), partnerApiKey (X-Api-Key)
 
 # ---------- v1 (deprecated) ----------
 
@@ -32,6 +34,21 @@ Authorization: Bearer {{devToken}}
   "price": 15.99
 }
 
+### Failure: validation error (bad tracking format) -> 400 ValidationProblemDetails
+POST {{baseUrl}}/api/v1/shipments
+Content-Type: application/json
+Authorization: Bearer {{devToken}}
+
+{
+  "trackingNumber": "BAD-123",
+  "weightKg": 2.5,
+  "recipientName": "Jane Doe",
+  "recipientPhone": "+15551234567",
+  "recipientAddress": "123 Main St",
+  "recipientCity": "Springfield",
+  "price": 15.99
+}
+
 ### Success: paged list -> 200
 GET {{baseUrl}}/api/v1/shipments?page=1&pageSize=20&status=Created&city=Springfield
 Authorization: Bearer {{devToken}}
@@ -48,7 +65,11 @@ Authorization: Bearer {{devToken}}
 {
   "trackingNumber": "APX-12345678",
   "weightKg": 3.0,
-  "price": 18.50
+  "price": 18.50,
+  "recipientName": "Jane Doe",
+  "recipientPhone": "+15551234567",
+  "recipientAddress": "123 Main St",
+  "recipientCity": "Springfield"
 }
 
 ### Failure: invalid status transition -> 409
@@ -124,15 +145,209 @@ Authorization: Bearer {{courierToken}}
   ]
 }
 
+### Failure: scan upload with another courierId -> 403
+POST {{baseUrl}}/api/v1/shipments/APX-12345678/scans
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "scans": [
+    {
+      "id": "6fa85f64-5717-4562-b3fc-2c963f66afa9",
+      "trackingNumber": "APX-12345678",
+      "scanType": "Pickup",
+      "courierId": "courier-999",
+      "location": "Depot A",
+      "scannedAtUtc": "2026-11-06T10:00:00Z",
+      "notes": ""
+    }
+  ]
+}
+
 ### Success: scan history -> 200
 GET {{baseUrl}}/api/v1/shipments/APX-12345678/scans
 Authorization: Bearer {{devToken}}
 
 # ---------- v2 ----------
 
+### Success: v2 paged list -> 200
+GET {{baseUrl}}/api/v2/shipments?page=1&pageSize=20
+Authorization: Bearer {{devToken}}
+
+### Failure: v2 unknown tracking number -> 404
+GET {{baseUrl}}/api/v2/shipments/APX-00000000
+Authorization: Bearer {{devToken}}
+
 ### Success: v2 shipment with recipient object + latestScan -> 200
 GET {{baseUrl}}/api/v2/shipments/APX-12345678
 Authorization: Bearer {{devToken}}
+
+### Success: v2 create shipment -> 201 + Location header
+POST {{baseUrl}}/api/v2/shipments
+Content-Type: application/json
+Authorization: Bearer {{devToken}}
+
+{
+  "trackingNumber": "APX-22334455",
+  "weightKg": 1.2,
+  "recipientName": "John Smith",
+  "recipientPhone": "+15557654321",
+  "recipientAddress": "45 Oak Ave",
+  "recipientCity": "Shelbyville",
+  "price": 9.99
+}
+
+### Failure: v2 duplicate tracking number -> 409
+POST {{baseUrl}}/api/v2/shipments
+Content-Type: application/json
+Authorization: Bearer {{devToken}}
+
+{
+  "trackingNumber": "APX-12345678",
+  "weightKg": 1.2,
+  "recipientName": "John Smith",
+  "recipientPhone": "+15557654321",
+  "recipientAddress": "45 Oak Ave",
+  "recipientCity": "Shelbyville",
+  "price": 9.99
+}
+
+### Failure: v2 validation error -> 400 ValidationProblemDetails
+POST {{baseUrl}}/api/v2/shipments
+Content-Type: application/json
+Authorization: Bearer {{devToken}}
+
+{
+  "trackingNumber": "APX-12345678",
+  "weightKg": 99,
+  "recipientName": "",
+  "recipientPhone": "not-a-phone",
+  "recipientAddress": "45 Oak Ave",
+  "recipientCity": "Shelbyville",
+  "price": -5
+}
+
+### Success: v2 update shipment -> 200
+PUT {{baseUrl}}/api/v2/shipments/APX-12345678
+Content-Type: application/json
+Authorization: Bearer {{devToken}}
+
+{
+  "trackingNumber": "APX-12345678",
+  "weightKg": 3.5,
+  "price": 21.00,
+  "recipientName": "Jane Doe",
+  "recipientPhone": "+15551234567",
+  "recipientAddress": "123 Main St",
+  "recipientCity": "Springfield"
+}
+
+### Failure: v2 tracking number mismatch -> 400
+PUT {{baseUrl}}/api/v2/shipments/APX-12345678
+Content-Type: application/json
+Authorization: Bearer {{devToken}}
+
+{
+  "trackingNumber": "APX-99999999",
+  "weightKg": 3.5,
+  "price": 21.00,
+  "recipientName": "Jane Doe",
+  "recipientPhone": "+15551234567",
+  "recipientAddress": "123 Main St",
+  "recipientCity": "Springfield"
+}
+
+### Success: v2 status transition -> 200
+PATCH {{baseUrl}}/api/v2/shipments/APX-12345678/status
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "status": "PickedUp"
+}
+
+### Failure: v2 invalid status transition -> 409
+PATCH {{baseUrl}}/api/v2/shipments/APX-12345678/status
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "status": "Delivered"
+}
+
+### Failure: v2 unknown status -> 400
+PATCH {{baseUrl}}/api/v2/shipments/APX-12345678/status
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "status": "Teleported"
+}
+
+### Success: v2 scan upload -> 200
+POST {{baseUrl}}/api/v2/shipments/APX-12345678/scans
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "scans": [
+    {
+      "id": "7fa85f64-5717-4562-b3fc-2c963f66afb0",
+      "trackingNumber": "APX-12345678",
+      "scanType": "Pickup",
+      "courierId": "courier-001",
+      "location": "Depot A",
+      "scannedAtUtc": "2026-11-06T10:00:00Z",
+      "notes": ""
+    }
+  ]
+}
+
+### Failure: v2 scan upload unknown shipment -> 404
+POST {{baseUrl}}/api/v2/shipments/APX-00000000/scans
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "scans": [
+    {
+      "id": "8fa85f64-5717-4562-b3fc-2c963f66afb1",
+      "trackingNumber": "APX-00000000",
+      "scanType": "Pickup",
+      "courierId": "courier-001",
+      "location": "Depot A",
+      "scannedAtUtc": "2026-11-06T10:00:00Z",
+      "notes": ""
+    }
+  ]
+}
+
+### Failure: v2 scan upload wrong courierId -> 403
+POST {{baseUrl}}/api/v2/shipments/APX-12345678/scans
+Content-Type: application/json
+Authorization: Bearer {{courierToken}}
+
+{
+  "scans": [
+    {
+      "id": "9fa85f64-5717-4562-b3fc-2c963f66afb2",
+      "trackingNumber": "APX-12345678",
+      "scanType": "Pickup",
+      "courierId": "courier-999",
+      "location": "Depot A",
+      "scannedAtUtc": "2026-11-06T10:00:00Z",
+      "notes": ""
+    }
+  ]
+}
+
+### Success: v2 scan history -> 200
+GET {{baseUrl}}/api/v2/shipments/APX-12345678/scans
+Authorization: Bearer {{devToken}}
+
+### Success: v2 delete Created shipment (Admin) -> 204
+DELETE {{baseUrl}}/api/v2/shipments/APX-22334455
+Authorization: Bearer {{adminToken}}
 
 ### Partner endpoint: missing API key -> 401
 GET {{baseUrl}}/api/v2/partner/shipments/APX-12345678

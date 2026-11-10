@@ -13,7 +13,7 @@ namespace ApexPost.Api.Controllers;
 /// Shipments API controller for managing shipment lifecycle
 /// </summary>
 [ApiController]
-[ApiVersion(1.0)]
+[ApiVersion(1.0, Deprecated = true)]
 [Route("api/v1/shipments")]
 [Authorize]
 public class ShipmentsController : ControllerBase
@@ -38,8 +38,10 @@ public class ShipmentsController : ControllerBase
     [HttpGet(Name = "GetShipments")]
     [Tags("Shipments")]
     [EndpointSummary("Get paged shipments")]
-    [ProducesResponseType(typeof(IEnumerable<Shipment>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IEnumerable<ShipmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetShipments(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -57,7 +59,7 @@ public class ShipmentsController : ControllerBase
         }
 
         var shipments = await _shipmentService.GetPagedAsync(page, pageSize, status, city);
-        return Ok(shipments);
+        return Ok(shipments.Select(ToResponse));
     }
 
     /// <summary>
@@ -68,8 +70,10 @@ public class ShipmentsController : ControllerBase
     [HttpGet("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "GetShipment")]
     [Tags("Shipments")]
     [EndpointSummary("Get shipment by tracking number")]
-    [ProducesResponseType(typeof(Shipment), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ShipmentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetShipment(string trackingNumber)
     {
         var shipment = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
@@ -83,7 +87,7 @@ public class ShipmentsController : ControllerBase
             });
         }
 
-        return Ok(shipment);
+        return Ok(ToResponse(shipment));
     }
 
     /// <summary>
@@ -94,9 +98,12 @@ public class ShipmentsController : ControllerBase
     [HttpPost(Name = "CreateShipment")]
     [Tags("Shipments")]
     [EndpointSummary("Create a new shipment")]
-    [ProducesResponseType(typeof(Shipment), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ShipmentResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateShipment([FromBody] CreateShipmentRequest request)
     {
         // Check if tracking number already exists
@@ -126,7 +133,7 @@ public class ShipmentsController : ControllerBase
         };
 
         var created = await _shipmentService.CreateAsync(shipment);
-        return CreatedAtAction(nameof(GetShipment), new { trackingNumber = created.TrackingReference }, created);
+        return CreatedAtAction(nameof(GetShipment), new { trackingNumber = created.TrackingReference }, ToResponse(created));
     }
 
     /// <summary>
@@ -138,9 +145,12 @@ public class ShipmentsController : ControllerBase
     [HttpPut("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "UpdateShipment")]
     [Tags("Shipments")]
     [EndpointSummary("Update shipment details")]
-    [ProducesResponseType(typeof(Shipment), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ShipmentResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateShipment(string trackingNumber, [FromBody] UpdateShipmentRequest request)
     {
         if (request.TrackingNumber != trackingNumber)
@@ -175,7 +185,7 @@ public class ShipmentsController : ControllerBase
             });
         }
 
-        return Ok(updated);
+        return Ok(ToResponse(updated));
     }
 
     /// <summary>
@@ -190,8 +200,12 @@ public class ShipmentsController : ControllerBase
     [EndpointSummary("Update shipment status")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateStatus(string trackingNumber, [FromBody] UpdateStatusRequest request)
     {
         if (!ShipmentStatusRules.IsKnownStatus(request.Status))
@@ -239,8 +253,11 @@ public class ShipmentsController : ControllerBase
     [Tags("Shipments")]
     [EndpointSummary("Delete a shipment")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteShipment(string trackingNumber)
     {
         var success = await _shipmentService.DeleteAsync(trackingNumber);
@@ -280,7 +297,11 @@ public class ShipmentsController : ControllerBase
     [EndpointSummary("Bulk upload shipment scans")]
     [ProducesResponseType(typeof(ScanUploadResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UploadScans(string trackingNumber, [FromBody] ScanUploadRequest request)
     {
         // Courier may upload scans only under their own courierId claim
@@ -351,8 +372,10 @@ public class ShipmentsController : ControllerBase
     [HttpGet("{trackingNumber:regex(^APX-\\d{{8}}$)}/scans", Name = "GetScans")]
     [Tags("Scans")]
     [EndpointSummary("Get shipment scan history")]
-    [ProducesResponseType(typeof(IEnumerable<ShipmentScan>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IEnumerable<ShipmentScanResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetScans(string trackingNumber)
     {
         var shipment = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
@@ -367,8 +390,34 @@ public class ShipmentsController : ControllerBase
         }
 
         var scans = await _shipmentService.GetScansAsync(trackingNumber);
-        return Ok(scans);
+        return Ok(scans.Select(ToScanResponse));
     }
+
+    private static ShipmentResponse ToResponse(Shipment shipment) => new()
+    {
+        Id = shipment.Id,
+        TrackingReference = shipment.TrackingReference,
+        WeightKg = shipment.WeightKg,
+        Price = shipment.Price,
+        ServiceLevel = shipment.ServiceLevel.ToString(),
+        Status = shipment.Status,
+        RecipientName = shipment.RecipientName,
+        RecipientPhone = shipment.RecipientPhone,
+        RecipientAddress = shipment.RecipientAddress,
+        RecipientCity = shipment.RecipientCity,
+        CreatedAtUtc = shipment.CreatedAtUtc
+    };
+
+    private static ShipmentScanResponse ToScanResponse(ShipmentScan scan) => new()
+    {
+        Id = scan.Id,
+        TrackingNumber = scan.TrackingNumber,
+        ScanType = scan.ScanType.ToString(),
+        CourierId = scan.CourierId,
+        Location = scan.Location,
+        ScannedAtUtc = scan.ScannedAtUtc,
+        Notes = scan.Notes
+    };
 
     private static DomainScanType MapScanType(ScanType dtoType)
     {
@@ -381,18 +430,4 @@ public class ShipmentsController : ControllerBase
             _ => throw new ArgumentOutOfRangeException(nameof(dtoType), $"Unexpected scan type: {dtoType}")
         };
     }
-}
-
-public sealed class ScanUploadResponse
-{
-    public int Accepted { get; init; }
-    public int DuplicatesSkipped { get; init; }
-    public int Rejected { get; init; }
-    public IReadOnlyList<ScanRejectionDto> Rejections { get; init; } = Array.Empty<ScanRejectionDto>();
-}
-
-public sealed class ScanRejectionDto
-{
-    public Guid ScanId { get; init; }
-    public string Reason { get; init; } = string.Empty;
 }

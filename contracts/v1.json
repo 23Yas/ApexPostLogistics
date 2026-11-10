@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.3",
+  "openapi": "3.1.1",
   "info": {
     "title": "ApexPost Logistics API",
     "description": "RESTful API for ApexPost Logistics shipment tracking and management (v1 - deprecated)",
@@ -11,7 +11,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5254/"
+      "url": "https://localhost:7145/"
     }
   ],
   "paths": {
@@ -76,7 +76,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Shipment"
+                    "$ref": "#/components/schemas/ShipmentResponse"
                   }
                 }
               },
@@ -84,7 +84,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Shipment"
+                    "$ref": "#/components/schemas/ShipmentResponse"
                   }
                 }
               },
@@ -92,7 +92,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Shipment"
+                    "$ref": "#/components/schemas/ShipmentResponse"
                   }
                 }
               }
@@ -100,6 +100,46 @@
           },
           "400": {
             "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
@@ -154,17 +194,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/Shipment"
+                  "$ref": "#/components/schemas/ShipmentResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Shipment"
+                  "$ref": "#/components/schemas/ShipmentResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Shipment"
+                  "$ref": "#/components/schemas/ShipmentResponse"
                 }
               }
             }
@@ -189,8 +229,68 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
@@ -238,23 +338,63 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/Shipment"
+                  "$ref": "#/components/schemas/ShipmentResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Shipment"
+                  "$ref": "#/components/schemas/ShipmentResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Shipment"
+                  "$ref": "#/components/schemas/ShipmentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
@@ -321,17 +461,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/Shipment"
+                  "$ref": "#/components/schemas/ShipmentResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Shipment"
+                  "$ref": "#/components/schemas/ShipmentResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Shipment"
+                  "$ref": "#/components/schemas/ShipmentResponse"
                 }
               }
             }
@@ -356,8 +496,68 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
@@ -401,6 +601,46 @@
           "204": {
             "description": "No Content"
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -423,6 +663,26 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
@@ -509,6 +769,46 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -531,6 +831,46 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
@@ -634,8 +974,88 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
@@ -683,7 +1103,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ShipmentScan"
+                    "$ref": "#/components/schemas/ShipmentScanResponse"
                   }
                 }
               },
@@ -691,7 +1111,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ShipmentScan"
+                    "$ref": "#/components/schemas/ShipmentScanResponse"
                   }
                 }
               },
@@ -699,14 +1119,54 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ShipmentScan"
+                    "$ref": "#/components/schemas/ShipmentScanResponse"
                   }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": {
@@ -732,14 +1192,6 @@
   },
   "components": {
     "schemas": {
-      "BranchCode": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "type": "string"
-          }
-        }
-      },
       "CreateShipmentRequest": {
         "required": [
           "trackingNumber",
@@ -753,7 +1205,8 @@
         "properties": {
           "trackingNumber": {
             "pattern": "^APX-\\d{8}$",
-            "type": "string"
+            "type": "string",
+            "description": "Tracking number in the format APX-XXXXXXXX (8 digits)."
           },
           "weightKg": {
             "maximum": 70,
@@ -763,19 +1216,24 @@
               "number",
               "string"
             ],
+            "description": "Parcel weight in kilograms (0.1 - 70).",
             "format": "double"
           },
           "recipientName": {
-            "type": "string"
+            "type": "string",
+            "description": "Full name of the recipient."
           },
           "recipientPhone": {
-            "type": "string"
+            "type": "string",
+            "description": "Recipient phone number in a valid international format."
           },
           "recipientAddress": {
-            "type": "string"
+            "type": "string",
+            "description": "Street address of the recipient."
           },
           "recipientCity": {
-            "type": "string"
+            "type": "string",
+            "description": "City of the recipient."
           },
           "price": {
             "maximum": 100000,
@@ -785,9 +1243,11 @@
               "number",
               "string"
             ],
+            "description": "Shipping price in the local currency (non-negative).",
             "format": "double"
           }
-        }
+        },
+        "description": "Request body for creating a new shipment."
       },
       "DevTokenRequest": {
         "type": "object",
@@ -803,21 +1263,6 @@
               "null",
               "string"
             ]
-          }
-        }
-      },
-      "LatestScanDto": {
-        "type": "object",
-        "properties": {
-          "scanType": {
-            "type": "string"
-          },
-          "location": {
-            "type": "string"
-          },
-          "scannedAtUtc": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },
@@ -859,34 +1304,20 @@
           }
         }
       },
-      "RecipientDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "phone": {
-            "type": "string"
-          },
-          "address": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          }
-        }
-      },
       "ScanRejectionDto": {
         "type": "object",
         "properties": {
           "scanId": {
             "type": "string",
+            "description": "ID of the rejected scan.",
             "format": "uuid"
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "description": "Machine-readable rejection reason."
           }
-        }
+        },
+        "description": "Reason a single scan was rejected during bulk upload."
       },
       "ScanType": {
         "enum": [
@@ -894,7 +1325,8 @@
           "InTransit",
           "Delivered",
           "Failed"
-        ]
+        ],
+        "description": "Kind of scan event recorded by a courier."
       },
       "ScanUploadRequest": {
         "type": "object",
@@ -903,9 +1335,11 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ShipmentScanDto"
-            }
+            },
+            "description": "Scans to upload; each carries its client-generated ID for idempotent de-duplication."
           }
-        }
+        },
+        "description": "Request body for bulk upload of offline-collected shipment scans."
       },
       "ScanUploadResponse": {
         "type": "object",
@@ -916,6 +1350,7 @@
               "integer",
               "string"
             ],
+            "description": "Number of scans persisted.",
             "format": "int32"
           },
           "duplicatesSkipped": {
@@ -924,6 +1359,7 @@
               "integer",
               "string"
             ],
+            "description": "Number of scans skipped because their ID was already stored.",
             "format": "int32"
           },
           "rejected": {
@@ -932,104 +1368,30 @@
               "integer",
               "string"
             ],
+            "description": "Number of scans rejected by validation.",
             "format": "int32"
           },
           "rejections": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ScanRejectionDto"
-            }
+            },
+            "description": "Per-scan rejection reasons (scan ID plus reason code)."
           }
-        }
+        },
+        "description": "Response body for a bulk scan upload: counts of accepted, de-duplicated and rejected scans."
       },
-      "ServiceLevel": {
-        "type": "integer"
-      },
-      "Shipment": {
+      "ShipmentResponse": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
+            "description": "Unique shipment identifier.",
             "format": "uuid"
-          },
-          "counterTransactionId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "branchCode": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/BranchCode"
-              }
-            ]
-          },
-          "zoneId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "serviceLevel": {
-            "$ref": "#/components/schemas/ServiceLevel"
-          },
-          "weightKg": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
-            "format": "double"
           },
           "trackingReference": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "recipientName": {
-            "type": "string"
-          },
-          "recipientPhone": {
-            "type": "string"
-          },
-          "recipientAddress": {
-            "type": "string"
-          },
-          "recipientCity": {
-            "type": "string"
-          },
-          "createdAtUtc": {
             "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "ShipmentResponseV2": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "trackingNumber": {
-            "type": "string"
+            "description": "Tracking reference in the format APX-XXXXXXXX."
           },
           "weightKg": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
@@ -1037,6 +1399,7 @@
               "number",
               "string"
             ],
+            "description": "Parcel weight in kilograms.",
             "format": "double"
           },
           "price": {
@@ -1045,57 +1408,40 @@
               "number",
               "string"
             ],
+            "description": "Shipping price in the local currency.",
             "format": "double"
           },
+          "serviceLevel": {
+            "type": "string",
+            "description": "Service level applied to the shipment."
+          },
           "status": {
-            "type": "string"
+            "type": "string",
+            "description": "Current lifecycle status (Created, PickedUp, InTransit, OutForDelivery, Delivered, Failed)."
           },
-          "recipient": {
-            "$ref": "#/components/schemas/RecipientDto"
+          "recipientName": {
+            "type": "string",
+            "description": "Full name of the recipient."
           },
-          "latestScan": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/LatestScanDto"
-              }
-            ]
+          "recipientPhone": {
+            "type": "string",
+            "description": "Recipient phone number."
+          },
+          "recipientAddress": {
+            "type": "string",
+            "description": "Street address of the recipient."
+          },
+          "recipientCity": {
+            "type": "string",
+            "description": "City of the recipient."
           },
           "createdAtUtc": {
             "type": "string",
+            "description": "UTC time the shipment was created.",
             "format": "date-time"
           }
-        }
-      },
-      "ShipmentScan": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "trackingNumber": {
-            "type": "string"
-          },
-          "scanType": {
-            "$ref": "#/components/schemas/ScanType"
-          },
-          "courierId": {
-            "type": "string"
-          },
-          "location": {
-            "type": "string"
-          },
-          "scannedAtUtc": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "notes": {
-            "type": "string"
-          }
-        }
+        },
+        "description": "v1 shipment response. Exposes only the public contract fields - internal\r\nlinkage such as counter transaction, branch and zone identifiers is hidden."
       },
       "ShipmentScanDto": {
         "required": [
@@ -1109,28 +1455,72 @@
         "properties": {
           "id": {
             "type": "string",
+            "description": "Client-generated scan ID; re-uploads of the same ID are de-duplicated.",
             "format": "uuid"
           },
           "trackingNumber": {
-            "type": "string"
+            "type": "string",
+            "description": "Tracking number the scan belongs to; must match the route."
           },
           "scanType": {
+            "description": "Type of scan event.",
             "$ref": "#/components/schemas/ScanType"
           },
           "courierId": {
-            "type": "string"
+            "type": "string",
+            "description": "Courier who performed the scan; must match the caller's courierId claim."
           },
           "location": {
-            "type": "string"
+            "type": "string",
+            "description": "Free-text location where the scan was taken."
           },
           "scannedAtUtc": {
             "type": "string",
+            "description": "UTC time the scan was captured on the device.",
             "format": "date-time"
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "description": "Optional notes; required for Delivered scans (recipient signature)."
           }
-        }
+        },
+        "description": "A single offline scan uploaded for a shipment."
+      },
+      "ShipmentScanResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique scan identifier (client-generated, used for de-duplication).",
+            "format": "uuid"
+          },
+          "trackingNumber": {
+            "type": "string",
+            "description": "Tracking number the scan belongs to."
+          },
+          "scanType": {
+            "type": "string",
+            "description": "Type of scan event (Pickup, InTransit, Delivered, Failed)."
+          },
+          "courierId": {
+            "type": "string",
+            "description": "Courier who performed the scan."
+          },
+          "location": {
+            "type": "string",
+            "description": "Free-text location where the scan was taken."
+          },
+          "scannedAtUtc": {
+            "type": "string",
+            "description": "UTC time the scan was captured.",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional notes (recipient signature for Delivered scans)."
+          }
+        },
+        "description": "v1 scan response for a single recorded scan event."
       },
       "UpdateShipmentRequest": {
         "required": [
@@ -1144,7 +1534,8 @@
         "properties": {
           "trackingNumber": {
             "pattern": "^APX-\\d{8}$",
-            "type": "string"
+            "type": "string",
+            "description": "Tracking number; must match the tracking number in the route."
           },
           "weightKg": {
             "maximum": 70,
@@ -1154,6 +1545,7 @@
               "number",
               "string"
             ],
+            "description": "Parcel weight in kilograms (0.1 - 70).",
             "format": "double"
           },
           "price": {
@@ -1164,29 +1556,35 @@
               "number",
               "string"
             ],
+            "description": "Shipping price in the local currency (non-negative).",
             "format": "double"
           },
           "recipientName": {
             "maxLength": 200,
             "minLength": 0,
-            "type": "string"
+            "type": "string",
+            "description": "Full name of the recipient."
           },
           "recipientPhone": {
             "maxLength": 32,
             "minLength": 0,
-            "type": "string"
+            "type": "string",
+            "description": "Recipient phone number in a valid international format."
           },
           "recipientAddress": {
             "maxLength": 400,
             "minLength": 0,
-            "type": "string"
+            "type": "string",
+            "description": "Street address of the recipient."
           },
           "recipientCity": {
             "maxLength": 100,
             "minLength": 0,
-            "type": "string"
+            "type": "string",
+            "description": "City of the recipient."
           }
-        }
+        },
+        "description": "Request body for replacing the editable details of an existing shipment."
       },
       "UpdateStatusRequest": {
         "required": [
@@ -1195,9 +1593,11 @@
         "type": "object",
         "properties": {
           "status": {
-            "type": "string"
+            "type": "string",
+            "description": "Target status; must be a known shipment status and a valid transition."
           }
-        }
+        },
+        "description": "Request body for changing only the status of a shipment."
       }
     },
     "securitySchemes": {
@@ -1216,16 +1616,13 @@
   ],
   "tags": [
     {
-      "name": "ApexPost.Api"
-    },
-    {
       "name": "Shipments"
     },
     {
       "name": "Scans"
     },
     {
-      "name": "Partner"
+      "name": "ApexPost.Api"
     }
   ]
 }

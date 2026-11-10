@@ -10,22 +10,27 @@ public sealed class OfflineSyncService
 {
 	private readonly ApexApiClient _apiClient;
 	private readonly IScanRepository _scanRepository;
+	private readonly ResiliencePipeline _resilience;
 	private readonly ILogger<OfflineSyncService> _logger;
 	private bool _isSyncing;
 
 	public DateTimeOffset? LastSyncTimeUtc { get; private set; }
 	public int LastFailureCount { get; private set; }
-	public string CircuitState { get; private set; } = "Closed";
+
+	/// <summary>Live circuit-breaker state read from the Polly pipeline (Closed/Open/HalfOpen/Isolated).</summary>
+	public string CircuitState => _resilience.CircuitState;
 
 	public event Action<int>? PendingCountChanged;
 
 	public OfflineSyncService(
 		ApexApiClient apiClient,
 		IScanRepository scanRepository,
+		ResiliencePipeline resilience,
 		ILogger<OfflineSyncService> logger)
 	{
 		_apiClient = apiClient;
 		_scanRepository = scanRepository;
+		_resilience = resilience;
 		_logger = logger;
 	}
 
@@ -77,7 +82,6 @@ public sealed class OfflineSyncService
 						summary.DuplicatesSkipped += result.DuplicatesSkipped;
 						summary.Failed += result.Rejected;
 						LastFailureCount = result.Rejected;
-						CircuitState = "Closed";
 
 						// Mark each scan based on the per-scan outcome.
 						var rejectedIds = result.Rejections?.Select(r => r.ScanId).ToHashSet() ?? new HashSet<Guid>();
@@ -104,7 +108,6 @@ public sealed class OfflineSyncService
 							continue;
 						}
 						_logger.LogWarning(ex, "Batch upload failed for {Tracking}", group.Key);
-						CircuitState = "Open";
 						summary.Failed += scans.Count;
 						LastFailureCount += scans.Count;
 						// Leave scans Pending so they retry on the next connectivity event.

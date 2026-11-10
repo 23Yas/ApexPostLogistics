@@ -81,12 +81,6 @@ public sealed class ShipmentRepository : IShipmentRepository
             return false;
         }
 
-        // Validate status transition
-        if (!IsValidStatusTransition(shipment.Status, newStatus))
-        {
-            return false;
-        }
-
         shipment.Status = newStatus;
         await _context.SaveChangesAsync(cancellationToken);
         return true;
@@ -98,12 +92,6 @@ public sealed class ShipmentRepository : IShipmentRepository
             .FirstOrDefaultAsync(s => s.TrackingReference == trackingNumber, cancellationToken);
 
         if (shipment == null)
-        {
-            return false;
-        }
-
-        // Only allow deletion if status is Created
-        if (shipment.Status != "Created")
         {
             return false;
         }
@@ -142,25 +130,5 @@ public sealed class ShipmentRepository : IShipmentRepository
             .Where(s => s.TrackingNumber == trackingNumber)
             .OrderByDescending(s => s.ScannedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private static bool IsValidStatusTransition(string currentStatus, string newStatus)
-    {
-        var allowedTransitions = new Dictionary<string, string[]>
-        {
-            ["Created"] = new[] { "PickedUp" },
-            ["PickedUp"] = new[] { "InTransit" },
-            ["InTransit"] = new[] { "OutForDelivery" },
-            ["OutForDelivery"] = new[] { "Delivered", "Failed" },
-            ["Delivered"] = Array.Empty<string>(),
-            ["Failed"] = Array.Empty<string>()
-        };
-
-        if (!allowedTransitions.TryGetValue(currentStatus, out var allowed))
-        {
-            return false;
-        }
-
-        return allowed.Contains(newStatus);
     }
 }
