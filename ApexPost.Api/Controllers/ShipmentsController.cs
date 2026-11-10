@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ApexPost.Api.DTOs;
 using ApexPost.Core.Application.Services;
 using ApexPost.Core.Domain;
@@ -12,6 +13,7 @@ namespace ApexPost.Api.Controllers;
 /// Shipments API controller for managing shipment lifecycle
 /// </summary>
 [ApiController]
+[ApiVersion(1.0)]
 [Route("api/v1/shipments")]
 [Authorize]
 public class ShipmentsController : ControllerBase

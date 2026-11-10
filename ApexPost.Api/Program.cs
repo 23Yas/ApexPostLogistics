@@ -2,6 +2,7 @@ using ApexPost.Api;
 using ApexPost.Core.Application.Interfaces;
 using ApexPost.Core.Application.Services;
 using ApexPost.Infrastructure;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,21 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
+// API versioning: URL-segment style (/api/v1/..., /api/v2/...).
+// A custom reader parses the literal "v1"/"v2" path segment so the existing
+// route templates and OpenAPI documents keep working unchanged.
+builder.Services.AddApiVersioning(options =>
+{
+    options.ApiVersionReader = new LiteralSegmentApiVersionReader();
+    options.ReportApiVersions = true; // emits api-supported-versions / api-deprecated-versions
+    options.AssumeDefaultVersionWhenUnspecified = false;
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'V";
+    options.SubstituteApiVersionInUrl = true;
+});
+
 // Add JWT Bearer authentication. Signing key/issuer/audience come from configuration
 // or User Secrets - never committed. A well-known dev key is used only in Development.
 var jwtKey = builder.Configuration["Jwt:Key"];
@@ -41,8 +57,10 @@ if (string.IsNullOrEmpty(jwtKey))
     }
     jwtKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 }
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "apexpost-dev";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "apexpost-courier";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+if (string.IsNullOrEmpty(jwtIssuer)) jwtIssuer = "apexpost-dev";
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+if (string.IsNullOrEmpty(jwtAudience)) jwtAudience = "apexpost-courier";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -109,11 +127,14 @@ builder.Services.AddSingleton<IWebHostEnvironment>(builder.Environment);
 
 var app = builder.Build();
 
-// API version headers (URL-segment versioning: /api/v1, /api/v2)
+// API version headers: ReportApiVersions emits api-supported-versions.
+// v1 is deprecated - mark it only on v1 responses (accurate, not blanket).
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.Append("api-supported-versions", "1.0, 2.0");
-    context.Response.Headers.Append("api-deprecated-versions", "1.0");
+    if (context.Request.Path.StartsWithSegments("/api/v1"))
+    {
+        context.Response.Headers.Append("api-deprecated-versions", "1.0");
+    }
     await next();
 });
 

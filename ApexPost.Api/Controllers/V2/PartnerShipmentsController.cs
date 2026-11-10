@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ApexPost.Core.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace ApexPost.Api.Controllers.V2;
 /// Partner read-only API with X-Api-Key header authentication
 /// </summary>
 [ApiController]
+[ApiVersion(2.0)]
 [Route("api/v2/partner/shipments")]
 public class PartnerShipmentsController : ControllerBase
 {

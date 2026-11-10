@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ApexPost.Api.DTOs;
 using ApexPost.Api.DTOs.V2;
 using ApexPost.Core.Application.Services;
@@ -13,6 +14,7 @@ namespace ApexPost.Api.Controllers.V2;
 /// Shipments API v2 controller with enhanced response structure
 /// </summary>
 [ApiController]
+[ApiVersion(2.0)]
 [Route("api/v2/shipments")]
 [Authorize]
 public class ShipmentsV2Controller : ControllerBase
