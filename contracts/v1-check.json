@@ -1,0 +1,1148 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "ApexPost Logistics API",
+    "description": "RESTful API for ApexPost Logistics shipment tracking and management (v1 - deprecated)",
+    "contact": {
+      "name": "ApexPost API Team",
+      "email": "api-team@apexpost.local"
+    },
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5254/"
+    }
+  ],
+  "paths": {
+    "/api/v1/shipments": {
+      "get": {
+        "tags": [
+          "Shipments"
+        ],
+        "summary": "Get paged list of shipments with optional filtering",
+        "operationId": "GetShipments",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Page size (default: 20, max: 50)",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Optional status filter",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "description": "Optional city filter",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Shipment"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Shipment"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Shipment"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      },
+      "post": {
+        "tags": [
+          "Shipments"
+        ],
+        "summary": "Create a new shipment",
+        "operationId": "CreateShipment",
+        "requestBody": {
+          "description": "Shipment creation request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShipmentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShipmentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShipmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/api/v1/shipments/{trackingNumber}": {
+      "get": {
+        "tags": [
+          "Shipments"
+        ],
+        "summary": "Get a single shipment by tracking number",
+        "operationId": "GetShipment",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "description": "The tracking number of the shipment",
+            "required": true,
+            "schema": {
+              "pattern": "^APX-\\d{8}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      },
+      "put": {
+        "tags": [
+          "Shipments"
+        ],
+        "summary": "Update editable shipment details",
+        "operationId": "UpdateShipment",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "description": "The tracking number of the shipment",
+            "required": true,
+            "schema": {
+              "pattern": "^APX-\\d{8}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Shipment update request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipmentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipmentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      },
+      "delete": {
+        "tags": [
+          "Shipments"
+        ],
+        "summary": "Delete a shipment (only allowed when status is Created)",
+        "operationId": "DeleteShipment",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "description": "The tracking number of the shipment",
+            "required": true,
+            "schema": {
+              "pattern": "^APX-\\d{8}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/api/v1/shipments/{trackingNumber}/status": {
+      "patch": {
+        "tags": [
+          "Shipments"
+        ],
+        "summary": "Update shipment status only",
+        "operationId": "UpdateShipmentStatus",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "description": "The tracking number of the shipment",
+            "required": true,
+            "schema": {
+              "pattern": "^APX-\\d{8}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Status update request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/api/v1/shipments/{trackingNumber}/scans": {
+      "post": {
+        "tags": [
+          "Scans"
+        ],
+        "summary": "Bulk upload of offline scans",
+        "operationId": "UploadScans",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "description": "The tracking number of the shipment",
+            "required": true,
+            "schema": {
+              "pattern": "^APX-\\d{8}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Scan upload request with list of scans",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanUploadRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanUploadRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanUploadResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanUploadResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      },
+      "get": {
+        "tags": [
+          "Scans"
+        ],
+        "summary": "Get scan history for a shipment",
+        "operationId": "GetScans",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "description": "The tracking number of the shipment",
+            "required": true,
+            "schema": {
+              "pattern": "^APX-\\d{8}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentScan"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentScan"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentScan"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BranchCode": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateShipmentRequest": {
+        "required": [
+          "trackingNumber",
+          "weightKg",
+          "recipientName",
+          "recipientPhone",
+          "recipientAddress",
+          "recipientCity"
+        ],
+        "type": "object",
+        "properties": {
+          "trackingNumber": {
+            "pattern": "^APX-\\d{8}$",
+            "type": "string"
+          },
+          "weightKg": {
+            "maximum": 70,
+            "minimum": 0.1,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "recipientName": {
+            "type": "string"
+          },
+          "recipientPhone": {
+            "type": "string"
+          },
+          "recipientAddress": {
+            "type": "string"
+          },
+          "recipientCity": {
+            "type": "string"
+          },
+          "price": {
+            "maximum": 100000,
+            "minimum": 0,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "DevTokenRequest": {
+        "type": "object",
+        "properties": {
+          "courierId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ScanRejectionDto": {
+        "type": "object",
+        "properties": {
+          "scanId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ScanType": {
+        "enum": [
+          "Pickup",
+          "InTransit",
+          "Delivered",
+          "Failed"
+        ]
+      },
+      "ScanUploadRequest": {
+        "type": "object",
+        "properties": {
+          "scans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShipmentScanDto"
+            }
+          }
+        }
+      },
+      "ScanUploadResponse": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "duplicatesSkipped": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "rejected": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "rejections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScanRejectionDto"
+            }
+          }
+        }
+      },
+      "ServiceLevel": {
+        "type": "integer"
+      },
+      "Shipment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "counterTransactionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "branchCode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BranchCode"
+              }
+            ]
+          },
+          "zoneId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "serviceLevel": {
+            "$ref": "#/components/schemas/ServiceLevel"
+          },
+          "weightKg": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "trackingReference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "recipientName": {
+            "type": "string"
+          },
+          "recipientPhone": {
+            "type": "string"
+          },
+          "recipientAddress": {
+            "type": "string"
+          },
+          "recipientCity": {
+            "type": "string"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ShipmentScan": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trackingNumber": {
+            "type": "string"
+          },
+          "scanType": {
+            "$ref": "#/components/schemas/ScanType"
+          },
+          "courierId": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "scannedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "ShipmentScanDto": {
+        "required": [
+          "trackingNumber",
+          "scanType",
+          "courierId",
+          "location",
+          "scannedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trackingNumber": {
+            "type": "string"
+          },
+          "scanType": {
+            "$ref": "#/components/schemas/ScanType"
+          },
+          "courierId": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "scannedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateShipmentRequest": {
+        "required": [
+          "trackingNumber",
+          "recipientName",
+          "recipientPhone",
+          "recipientAddress",
+          "recipientCity"
+        ],
+        "type": "object",
+        "properties": {
+          "trackingNumber": {
+            "pattern": "^APX-\\d{8}$",
+            "type": "string"
+          },
+          "weightKg": {
+            "maximum": 70,
+            "minimum": 0.1,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "price": {
+            "maximum": 100000,
+            "minimum": 0,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "recipientName": {
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string"
+          },
+          "recipientPhone": {
+            "maxLength": 32,
+            "minLength": 0,
+            "type": "string"
+          },
+          "recipientAddress": {
+            "maxLength": 400,
+            "minLength": 0,
+            "type": "string"
+          },
+          "recipientCity": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          }
+        }
+      },
+      "UpdateStatusRequest": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "JWT Bearer token issued for couriers and admins",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "Bearer": [ ]
+    }
+  ],
+  "tags": [
+    {
+      "name": "Shipments"
+    },
+    {
+      "name": "Scans"
+    },
+    {
+      "name": "ApexPost.Api"
+    }
+  ]
+}
