@@ -94,7 +94,7 @@ dotnet test ApexPost.Specs            # Reqnroll BDD acceptance scenarios (API l
 
 The integration and spec tests never use `ApexPostDb`. Each factory creates a database named `ApexPostTestApi_<guid>` (API) or `ApexPostTest_<guid>` (web), applies migrations and drops it on dispose. Couchbase tests use a temp directory. LocalDB must be running. See `TESTING-STRATEGY.md` for the pyramid, framework choice and data-access rationale, `TDD-LOG.md` for the test-first cycle and `COPILOT-LOG.md` for AI-assisted drafting review.
 
-Latest full-suite result: **118 passed, 0 failed** (63 unit + 43 integration + 12 BDD specs).
+Latest full-suite result: **120 passed, 0 failed** (65 unit + 43 integration + 12 BDD specs).
 
 ## 8. Project layout
 
