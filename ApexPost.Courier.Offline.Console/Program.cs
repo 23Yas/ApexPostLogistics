@@ -1,6 +1,33 @@
 ﻿using ApexPost.Courier.Offline;
+using Couchbase.Lite.Query;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
+// --explain: print the query plans for the indexed lookups (index-usage evidence), then exit.
+if (args.Contains("--explain"))
+{
+    using var explainDb = new CourierDatabase("apexpost_courier");
+    explainDb.CreateIndexes();
+    var collection = explainDb.DefaultCollection;
+    foreach (var (label, sql) in new (string, string)[]
+    {
+        ("pending scans", "EXPLAIN QUERY SELECT * FROM _ WHERE syncStatus = $syncStatus ORDER BY scannedAtUtc"),
+        ("by tracking number", "EXPLAIN QUERY SELECT * FROM _ WHERE trackingNumber = $trackingNumber ORDER BY scannedAtUtc"),
+        ("scan counts", "EXPLAIN QUERY SELECT scanType, COUNT(*) AS scanCount FROM _ WHERE courierId = $courierId GROUP BY scanType")
+    })
+    {
+        Console.WriteLine($"--- {label} ---");
+        using var query = collection.CreateQuery(sql);
+        query.Parameters = new Parameters()
+            .SetString("syncStatus", SyncStatus.Pending.ToString())
+            .SetString("trackingNumber", "APX-00000000")
+            .SetString("courierId", "courier-001");
+        var plan = query.Explain();
+        Console.WriteLine(plan);
+    }
+    explainDb.Dispose();
+    return;
+}
 
 var serviceProvider = new ServiceCollection()
     .AddLogging(builder => builder.AddConsole())
@@ -188,6 +215,7 @@ static async Task SimulateSync(OutboxService outboxService)
     Console.WriteLine($"  Total Pending: {summary.TotalPending}");
     Console.WriteLine($"  Synced: {summary.Synced}");
     Console.WriteLine($"  Failed: {summary.Failed}");
+    Console.WriteLine($"  Deferred (still pending): {summary.Deferred}");
 }
 
 static async Task DeleteScan(IScanRepository repository)

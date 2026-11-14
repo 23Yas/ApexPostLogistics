@@ -15,7 +15,7 @@ namespace ApexPost.Api.Controllers.V2;
 /// </summary>
 [ApiController]
 [ApiVersion(2.0)]
-[Route("api/v2/shipments")]
+[Route("api/v{version:apiVersion}/shipments")]
 [Authorize]
 public class ShipmentsV2Controller : ControllerBase
 {
@@ -44,16 +44,6 @@ public class ShipmentsV2Controller : ControllerBase
         [FromQuery] string? status = null,
         [FromQuery] string? city = null)
     {
-        if (pageSize < 1 || pageSize > 50)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Invalid page size",
-                Detail = "Page size must be between 1 and 50",
-                Status = StatusCodes.Status400BadRequest
-            });
-        }
-
         var shipments = await _shipmentService.GetPagedAsync(page, pageSize, status, city);
         var v2Responses = new List<ShipmentResponseV2>();
         foreach (var s in shipments)
@@ -75,45 +65,26 @@ public class ShipmentsV2Controller : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetShipment(string trackingNumber)
     {
-        var shipment = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
-        if (shipment == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Shipment not found",
-                Detail = $"No shipment found with tracking number {trackingNumber}",
-                Status = StatusCodes.Status404NotFound
-            });
-        }
-
+        var shipment = await _shipmentService.GetShipmentAsync(trackingNumber);
         return Ok(await MapToV2ResponseAsync(shipment));
     }
 
     /// <summary>
-    /// Create a new shipment (v2)
+    /// Create a new shipment (v2, Admin only)
     /// </summary>
     [HttpPost(Name = "CreateShipmentV2")]
+    [Authorize(Roles = "Admin")]
     [Tags("Shipments")]
     [EndpointSummary("Create a new shipment (v2)")]
     [ProducesResponseType(typeof(ShipmentResponseV2), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateShipment([FromBody] CreateShipmentRequest request)
     {
-        var existing = await _shipmentService.GetByTrackingNumberAsync(request.TrackingNumber);
-        if (existing != null)
-        {
-            return Conflict(new ProblemDetails
-            {
-                Title = "Duplicate tracking number",
-                Detail = $"A shipment with tracking number {request.TrackingNumber} already exists",
-                Status = StatusCodes.Status409Conflict
-            });
-        }
-
         var shipment = new Shipment
         {
             Id = Guid.NewGuid(),
@@ -133,14 +104,16 @@ public class ShipmentsV2Controller : ControllerBase
     }
 
     /// <summary>
-    /// Replace editable shipment details (v2)
+    /// Replace editable shipment details (v2, Admin only)
     /// </summary>
     [HttpPut("{trackingNumber:regex(^APX-\\d{{8}}$)}", Name = "UpdateShipmentV2")]
+    [Authorize(Roles = "Admin")]
     [Tags("Shipments")]
     [EndpointSummary("Update shipment details (v2)")]
     [ProducesResponseType(typeof(ShipmentResponseV2), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
@@ -148,12 +121,7 @@ public class ShipmentsV2Controller : ControllerBase
     {
         if (request.TrackingNumber != trackingNumber)
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Tracking number mismatch",
-                Detail = "Tracking number in URL must match request body",
-                Status = StatusCodes.Status400BadRequest
-            });
+            throw new BadRequestException("Tracking number in URL must match request body");
         }
 
         var shipment = new Shipment
@@ -168,16 +136,6 @@ public class ShipmentsV2Controller : ControllerBase
         };
 
         var updated = await _shipmentService.UpdateAsync(trackingNumber, shipment);
-        if (updated == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Shipment not found",
-                Detail = $"No shipment found with tracking number {trackingNumber}",
-                Status = StatusCodes.Status404NotFound
-            });
-        }
-
         return Ok(await MapToV2ResponseAsync(updated));
     }
 
@@ -196,28 +154,7 @@ public class ShipmentsV2Controller : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteShipment(string trackingNumber)
     {
-        var success = await _shipmentService.DeleteAsync(trackingNumber);
-        if (!success)
-        {
-            var existing = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
-            if (existing == null)
-            {
-                return NotFound(new ProblemDetails
-                {
-                    Title = "Shipment not found",
-                    Detail = $"No shipment found with tracking number {trackingNumber}",
-                    Status = StatusCodes.Status404NotFound
-                });
-            }
-
-            return Conflict(new ProblemDetails
-            {
-                Title = "Cannot delete shipment",
-                Detail = $"Shipment with status {existing.Status} cannot be deleted. Only shipments with status 'Created' can be deleted.",
-                Status = StatusCodes.Status409Conflict
-            });
-        }
-
+        await _shipmentService.DeleteAsync(trackingNumber);
         return NoContent();
     }
 
@@ -228,7 +165,7 @@ public class ShipmentsV2Controller : ControllerBase
     [Authorize(Roles = "Courier")]
     [Tags("Shipments")]
     [EndpointSummary("Update shipment status (v2)")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ShipmentResponseV2), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -240,37 +177,11 @@ public class ShipmentsV2Controller : ControllerBase
     {
         if (!ShipmentStatusRules.IsKnownStatus(request.Status))
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Unknown status",
-                Detail = $"'{request.Status}' is not a valid shipment status",
-                Status = StatusCodes.Status400BadRequest
-            });
+            throw new BadRequestException($"'{request.Status}' is not a valid shipment status");
         }
 
-        var success = await _shipmentService.UpdateStatusAsync(trackingNumber, request.Status);
-        if (!success)
-        {
-            var existing = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
-            if (existing == null)
-            {
-                return NotFound(new ProblemDetails
-                {
-                    Title = "Shipment not found",
-                    Detail = $"No shipment found with tracking number {trackingNumber}",
-                    Status = StatusCodes.Status404NotFound
-                });
-            }
-
-            return Conflict(new ProblemDetails
-            {
-                Title = "Invalid status transition",
-                Detail = $"Cannot transition from {existing.Status} to {request.Status}",
-                Status = StatusCodes.Status409Conflict
-            });
-        }
-
-        return Ok();
+        var updated = await _shipmentService.UpdateStatusAsync(trackingNumber, request.Status);
+        return Ok(await MapToV2ResponseAsync(updated));
     }
 
     /// <summary>
@@ -310,17 +221,6 @@ public class ShipmentsV2Controller : ControllerBase
             });
         }
 
-        var shipment = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
-        if (shipment == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Shipment not found",
-                Detail = $"No shipment found with tracking number {trackingNumber}",
-                Status = StatusCodes.Status404NotFound
-            });
-        }
-
         var scans = request.Scans.Select(dto => new ShipmentScan
         {
             Id = dto.Id,
@@ -357,17 +257,6 @@ public class ShipmentsV2Controller : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetScans(string trackingNumber)
     {
-        var shipment = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
-        if (shipment == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Shipment not found",
-                Detail = $"No shipment found with tracking number {trackingNumber}",
-                Status = StatusCodes.Status404NotFound
-            });
-        }
-
         var scans = await _shipmentService.GetScansAsync(trackingNumber);
         return Ok(scans.Select(ToScanResponse));
     }

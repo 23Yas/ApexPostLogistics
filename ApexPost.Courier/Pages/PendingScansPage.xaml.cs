@@ -36,7 +36,7 @@ public partial class PendingScansPage : ContentPage
     {
         var summary = await _syncService.SyncAsync();
         await DisplayAlert("Sync complete",
-            $"Synced: {summary.Synced}, Duplicates: {summary.DuplicatesSkipped}, Failed: {summary.Failed}", "OK");
+            $"Synced: {summary.Synced}, Duplicates: {summary.DuplicatesSkipped}, Failed: {summary.Failed}, Deferred: {summary.Deferred}", "OK");
         await RefreshAsync();
     }
 }

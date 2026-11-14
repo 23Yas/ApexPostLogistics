@@ -26,7 +26,8 @@ public sealed class FakeShipmentUploader : IShipmentUploader
         {
             var error = "Simulated API failure";
             _logger?.LogWarning("Fake upload failed for scan {ScanId}: {Error}", scan.Id, error);
-            return Task.FromResult(new UploadResult { Success = false, ErrorMessage = error });
+            // Simulated failures are transient so the scan stays Pending for the next sync.
+            return Task.FromResult(new UploadResult { Success = false, ErrorMessage = error, IsTransient = true });
         }
     }
 }

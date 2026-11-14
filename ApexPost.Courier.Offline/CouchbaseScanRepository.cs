@@ -54,13 +54,21 @@ public sealed class CouchbaseScanRepository : IScanRepository
         var docId = $"scan::{scan.Id}";
         var collection = _database.DefaultCollection;
 
+        if (collection.GetDocument(docId) is not null)
+        {
+            throw new InvalidOperationException($"A scan with ID {scan.Id} already exists");
+        }
+
         var mutableDoc = new MutableDocument(docId);
         mutableDoc.SetString("id", scan.Id.ToString());
         mutableDoc.SetString("trackingNumber", scan.TrackingNumber);
         mutableDoc.SetString("scanType", scan.ScanType.ToString());
         mutableDoc.SetString("courierId", scan.CourierId);
         mutableDoc.SetString("location", scan.Location);
-        mutableDoc.SetDate("scannedAtUtc", scan.ScannedAtUtc.DateTime);
+        // Couchbase stores DateTime without an offset: keep the UTC instant for correct
+        // ordering and persist the offset separately so the original value round-trips.
+        mutableDoc.SetDate("scannedAtUtc", scan.ScannedAtUtc.UtcDateTime);
+        mutableDoc.SetString("scannedAtUtcOffset", scan.ScannedAtUtc.Offset.ToString());
         mutableDoc.SetString("notes", scan.Notes);
         // Every new scan is always persisted locally first as Pending.
         mutableDoc.SetString("syncStatus", SyncStatus.Pending.ToString());
@@ -94,7 +102,8 @@ public sealed class CouchbaseScanRepository : IScanRepository
             mutableDoc.SetString("scanType", scan.ScanType.ToString());
             mutableDoc.SetString("courierId", scan.CourierId);
             mutableDoc.SetString("location", scan.Location);
-            mutableDoc.SetDate("scannedAtUtc", scan.ScannedAtUtc.DateTime);
+            mutableDoc.SetDate("scannedAtUtc", scan.ScannedAtUtc.UtcDateTime);
+            mutableDoc.SetString("scannedAtUtcOffset", scan.ScannedAtUtc.Offset.ToString());
             mutableDoc.SetString("notes", scan.Notes);
             mutableDoc.SetString("syncStatus", scan.SyncStatus.ToString());
 
@@ -198,7 +207,7 @@ public sealed class CouchbaseScanRepository : IScanRepository
         var scans = new List<ShipmentScan>();
 
         using var query = collection.CreateQuery(
-            "SELECT * FROM _ WHERE syncStatus = $syncStatus");
+            "SELECT * FROM _ WHERE syncStatus = $syncStatus ORDER BY scannedAtUtc");
         query.Parameters = new Parameters().SetString("syncStatus", SyncStatus.Pending.ToString());
 
         var resultSet = query.Execute();
@@ -287,6 +296,14 @@ public sealed class CouchbaseScanRepository : IScanRepository
     {
         try
         {
+            var scannedAtUtc = ParseTimestamp(dict["scannedAtUtc"]);
+            // Re-apply the persisted UTC offset so the original DateTimeOffset round-trips.
+            if (dict.TryGetValue("scannedAtUtcOffset", out var offsetValue)
+                && TimeSpan.TryParse(offsetValue?.ToString(), out var offset))
+            {
+                scannedAtUtc = scannedAtUtc.ToOffset(offset);
+            }
+
             return new ShipmentScan
             {
                 Id = Guid.Parse(dict["id"].ToString()!),
@@ -294,7 +311,7 @@ public sealed class CouchbaseScanRepository : IScanRepository
                 ScanType = Enum.Parse<ScanType>(dict["scanType"].ToString()!),
                 CourierId = dict["courierId"].ToString()!,
                 Location = dict["location"].ToString()!,
-                ScannedAtUtc = ParseTimestamp(dict["scannedAtUtc"]),
+                ScannedAtUtc = scannedAtUtc,
                 Notes = dict["notes"]?.ToString() ?? string.Empty,
                 SyncStatus = Enum.Parse<SyncStatus>(dict["syncStatus"].ToString()!)
             };

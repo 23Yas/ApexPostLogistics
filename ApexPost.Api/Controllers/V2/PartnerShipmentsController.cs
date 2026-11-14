@@ -11,7 +11,7 @@ namespace ApexPost.Api.Controllers.V2;
 /// </summary>
 [ApiController]
 [ApiVersion(2.0)]
-[Route("api/v2/partner/shipments")]
+[Route("api/v{version:apiVersion}/partner/shipments")]
 [ServiceFilter(typeof(PartnerApiKeyFilter))]
 public class PartnerShipmentsController : ControllerBase
 {
@@ -38,16 +38,7 @@ public class PartnerShipmentsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetShipment(string trackingNumber)
     {
-        var shipment = await _shipmentService.GetByTrackingNumberAsync(trackingNumber);
-        if (shipment == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Shipment not found",
-                Detail = $"No shipment found with tracking number {trackingNumber}",
-                Status = StatusCodes.Status404NotFound
-            });
-        }
+        var shipment = await _shipmentService.GetShipmentAsync(trackingNumber);
 
         // Return minimal read-only view for partners
         return Ok(new PartnerShipmentResponse

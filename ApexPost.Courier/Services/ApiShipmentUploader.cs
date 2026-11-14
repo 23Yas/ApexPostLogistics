@@ -1,5 +1,6 @@
 using ApexPost.Courier.Offline;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace ApexPost.Courier.Services;
 
@@ -40,7 +41,23 @@ public sealed class ApiShipmentUploader : IShipmentUploader
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Scan upload failed for {ScanId}", scan.Id);
-			return new UploadResult { Success = false, ErrorMessage = ex.Message };
+			return new UploadResult { Success = false, ErrorMessage = ex.Message, IsTransient = IsTransient(ex) };
 		}
 	}
+
+	/// <summary>
+	/// Transport failures, timeouts, 5xx and 401 (expired token - retried after re-login)
+	/// are transient: the scan stays Pending. Other 4xx responses are real rejections.
+	/// </summary>
+	internal static bool IsTransient(Exception ex) => ex switch
+	{
+		HttpRequestException { StatusCode: { } status } =>
+			(int)status >= 500
+			|| status is HttpStatusCode.RequestTimeout
+				or HttpStatusCode.TooManyRequests
+				or HttpStatusCode.Unauthorized,
+		HttpRequestException => true, // no status code: DNS/socket/connection failure
+		TaskCanceledException or OperationCanceledException => true, // timeout or caller cancel
+		_ => false
+	};
 }

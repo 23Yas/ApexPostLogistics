@@ -17,7 +17,7 @@ URL-segment versioning: `/api/v{version}/shipments`. Both versions share the sam
 ## Deprecation and sunset plan for v1
 
 - v1 is deprecated as of this release and `ReportApiVersions = true` emits `api-supported-versions` (`1.0` on v1 routes, `2.0` on v2); `api-deprecated-versions: 1.0` is added only to `/api/v1/*` responses.
-- Sunset: v1 will be removed 6 months after v2 GA. During the window v1 operations are marked `deprecated: true` in the OpenAPI document and shown as "v1 (deprecated)" in Swagger UI.
+- Sunset: v1 responses carry the RFC 8594 `Sunset: Sat, 15 May 2027 00:00:00 GMT` header (emitted by middleware for `/api/v1/*`). v1 will be removed on that date; until then its operations are marked `deprecated: true` in the OpenAPI document and shown as "v1 (deprecated)" in Swagger UI.
 - Contract snapshots are stored in `/contracts/v1.json` and `/contracts/v2.json`.
 
 ## OpenAPI documents

@@ -91,13 +91,21 @@ public sealed class OfflineSyncService
 							await _scanRepository.UpdateAsync(scan, ct);
 						}
 					}
-					catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+					catch (Exception ex)
 					{
-						// Only transport-level failures open the circuit; 4xx/5xx responses
-						// surface as HttpRequestException with a status - treat 5xx as breaker-worthy.
-						if (ex is HttpRequestException { StatusCode: { } code } && (int)code < 500)
+						if (ct.IsCancellationRequested) throw;
+
+						// Only a definitive non-transient 4xx rejection fails the scans.
+						// Transport errors, timeouts, 5xx and 401 leave them Pending so a
+						// courier syncing in a dead zone never loses scans.
+						var statusCode = (ex as HttpRequestException)?.StatusCode;
+						var permanentRejection = statusCode is { } code
+							&& (int)code is >= 400 and < 500
+							&& !ApiShipmentUploader.IsTransient(ex);
+
+						if (permanentRejection)
 						{
-							_logger.LogWarning(ex, "Batch upload rejected for {Tracking} ({Code})", group.Key, code);
+							_logger.LogWarning(ex, "Batch upload rejected for {Tracking} ({Code})", group.Key, statusCode);
 							summary.Failed += scans.Count;
 							LastFailureCount += scans.Count;
 							foreach (var scan in scans)
@@ -107,9 +115,9 @@ public sealed class OfflineSyncService
 							}
 							continue;
 						}
-						_logger.LogWarning(ex, "Batch upload failed for {Tracking}", group.Key);
-						summary.Failed += scans.Count;
-						LastFailureCount += scans.Count;
+
+						_logger.LogWarning(ex, "Batch upload deferred for {Tracking}; scans stay Pending", group.Key);
+						summary.Deferred += scans.Count;
 						// Leave scans Pending so they retry on the next connectivity event.
 					}
 				}
@@ -131,4 +139,7 @@ public sealed class SyncSummary
 	public int Synced { get; set; }
 	public int DuplicatesSkipped { get; set; }
 	public int Failed { get; set; }
+
+	/// <summary>Scans left Pending because of a transient (network/server) failure.</summary>
+	public int Deferred { get; set; }
 }

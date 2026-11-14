@@ -1,0 +1,11 @@
+=== 401 missing token ===
+401 application/problem+json
+=== 403 courier on admin POST ===
+403
+=== partner 401 no key ===
+401
+=== partner 200 valid key ===
+200
+=== v1 sunset+deprecated headers ===
+Sunset: Sat, 15 May 2027 00:00:00 GMT
+api-deprecated-versions: 1.0

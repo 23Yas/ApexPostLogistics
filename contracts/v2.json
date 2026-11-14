@@ -114,7 +114,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
       }
     },
     "/api/v2/shipments": {
@@ -262,7 +267,7 @@
         "tags": [
           "Shipments"
         ],
-        "summary": "Create a new shipment (v2)",
+        "summary": "Create a new shipment (v2, Admin only)",
         "operationId": "CreateShipmentV2",
         "requestBody": {
           "content": {
@@ -327,6 +332,26 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "text/plain": {
                 "schema": {
@@ -513,7 +538,7 @@
         "tags": [
           "Shipments"
         ],
-        "summary": "Replace editable shipment details (v2)",
+        "summary": "Replace editable shipment details (v2, Admin only)",
         "operationId": "UpdateShipmentV2",
         "parameters": [
           {
@@ -589,6 +614,26 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "text/plain": {
                 "schema": {
@@ -833,7 +878,24 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentResponseV2"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentResponseV2"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentResponseV2"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request",
@@ -1741,6 +1803,12 @@
         "description": "JWT Bearer token issued for couriers and admins",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "ApiKey": {
+        "type": "apiKey",
+        "description": "Partner API key sent in the X-Api-Key header",
+        "name": "X-Api-Key",
+        "in": "header"
       }
     }
   },

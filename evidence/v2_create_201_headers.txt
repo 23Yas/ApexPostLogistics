@@ -1,0 +1,8 @@
+HTTP/1.1 201 Created
+Content-Type: application/json; charset=utf-8
+Date: Sat, 14 Nov 2026 22:12:25 GMT
+Server: Kestrel
+Location: https://localhost:7145/api/v2/shipments/APX-55554444
+Transfer-Encoding: chunked
+api-supported-versions: 2.0
+

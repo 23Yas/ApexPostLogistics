@@ -10,13 +10,15 @@ public sealed class CourierDatabase : IDisposable
     private readonly ILogger<CourierDatabase>? _logger;
     private ListenerToken? _changeListenerToken;
 
-    public CourierDatabase(string databaseName, ILogger<CourierDatabase>? logger = null)
+    public CourierDatabase(string databaseName, ILogger<CourierDatabase>? logger = null, DatabaseConfiguration? configuration = null)
     {
         _logger = logger;
         
         try
         {
-            _database = new Database(databaseName);
+            _database = configuration is null
+                ? new Database(databaseName)
+                : new Database(databaseName, configuration);
             _logger?.LogInformation("Courier database '{DatabaseName}' opened successfully", databaseName);
         }
         catch (CouchbaseLiteException ex)

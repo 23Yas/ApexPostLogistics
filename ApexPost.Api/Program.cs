@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,7 +38,8 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 // route templates and OpenAPI documents keep working unchanged.
 builder.Services.AddApiVersioning(options =>
 {
-    options.ApiVersionReader = new LiteralSegmentApiVersionReader();
+    // Standard URL-segment reader: routes use api/v{version:apiVersion}.
+    options.ApiVersionReader = new UrlSegmentApiVersionReader();
     options.ReportApiVersions = true; // emits api-supported-versions / api-deprecated-versions
     options.AssumeDefaultVersionWhenUnspecified = false;
 })
@@ -83,24 +85,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 context.HandleResponse();
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                // WriteAsJsonAsync would force application/json; serialize manually so the
+                // response keeps the RFC 7807 application/problem+json content type.
                 context.Response.ContentType = "application/problem+json";
-                await context.Response.WriteAsJsonAsync(new ProblemDetails
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new ProblemDetails
                 {
                     Title = "Unauthorized",
                     Detail = "Missing, invalid or expired bearer token",
                     Status = StatusCodes.Status401Unauthorized
-                });
+                }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
             },
             OnForbidden = async context =>
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 context.Response.ContentType = "application/problem+json";
-                await context.Response.WriteAsJsonAsync(new ProblemDetails
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new ProblemDetails
                 {
                     Title = "Forbidden",
                     Detail = "The authenticated user does not have the required role",
                     Status = StatusCodes.Status403Forbidden
-                });
+                }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
             }
         };
     });
@@ -131,9 +135,6 @@ builder.Services.AddSingleton<IWebHostEnvironment>(builder.Environment);
 
 var app = builder.Build();
 
-// API version headers (api-supported-versions / api-deprecated-versions)
-// are emitted by Asp.Versioning's ReportApiVersions - no custom middleware needed.
-
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -152,6 +153,16 @@ else
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+
+// RFC 8594 Sunset header on deprecated v1 responses so clients see the removal date.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/v1", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.Headers["Sunset"] = "Sat, 15 May 2027 00:00:00 GMT";
+    }
+    await next();
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -192,3 +203,5 @@ public sealed class DevTokenRequest
     public string? CourierId { get; set; }
     public string? Role { get; set; }
 }
+
+public partial class Program { }

@@ -12,7 +12,9 @@ using Microsoft.Extensions.Configuration;
 /// Hosts the app against a disposable database named ApexPostTest_&lt;guid&gt;. The development database
 /// (ApexPostDb) is never touched. The database is dropped when the factory is disposed.
 /// </summary>
-public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
+// TEntryPoint only identifies the entry-point assembly; any public type from
+// ApexPost.Web works and avoids ambiguity with ApexPost.Api's Program class.
+public sealed class CustomWebApplicationFactory : WebApplicationFactory<ApexPost.Web.Middleware.RateLimitMiddleware>
 {
     private static string _allowedIps = "127.0.0.1,::1";
     private readonly string _databaseName = $"ApexPostTest_{Guid.NewGuid():N}";

@@ -17,48 +17,81 @@ public sealed class ShipmentService
         return await _shipmentRepository.GetByTrackingNumberAsync(trackingNumber, cancellationToken);
     }
 
+    /// <summary>Returns the shipment or throws <see cref="NotFoundException"/> (HTTP 404).</summary>
+    public async Task<Shipment> GetShipmentAsync(string trackingNumber, CancellationToken cancellationToken = default)
+    {
+        return await _shipmentRepository.GetByTrackingNumberAsync(trackingNumber, cancellationToken)
+            ?? throw new NotFoundException($"No shipment found with tracking number {trackingNumber}");
+    }
+
     public async Task<IReadOnlyCollection<Shipment>> GetPagedAsync(int page, int pageSize, string? status = null, string? city = null, CancellationToken cancellationToken = default)
     {
-        if (page < 1) page = 1;
-        if (pageSize < 1 || pageSize > 50) pageSize = 20;
+        if (page < 1)
+        {
+            throw new BadRequestException("page must be greater than or equal to 1");
+        }
+        if (pageSize < 1 || pageSize > 50)
+        {
+            throw new BadRequestException("pageSize must be between 1 and 50");
+        }
 
         return await _shipmentRepository.GetPagedAsync(page, pageSize, status, city, cancellationToken);
     }
 
+    /// <summary>Creates a shipment; throws <see cref="ConflictException"/> on a duplicate tracking number.</summary>
     public async Task<Shipment> CreateAsync(Shipment shipment, CancellationToken cancellationToken = default)
     {
+        var existing = await _shipmentRepository.GetByTrackingNumberAsync(shipment.TrackingReference, cancellationToken);
+        if (existing is not null)
+        {
+            throw new ConflictException($"A shipment with tracking number {shipment.TrackingReference} already exists");
+        }
+
         return await _shipmentRepository.CreateAsync(shipment, cancellationToken);
     }
 
-    public async Task<Shipment?> UpdateAsync(string trackingNumber, Shipment shipment, CancellationToken cancellationToken = default)
+    /// <summary>Updates editable fields; throws <see cref="NotFoundException"/> when the shipment is missing.</summary>
+    public async Task<Shipment> UpdateAsync(string trackingNumber, Shipment shipment, CancellationToken cancellationToken = default)
     {
-        return await _shipmentRepository.UpdateAsync(trackingNumber, shipment, cancellationToken);
+        return await _shipmentRepository.UpdateAsync(trackingNumber, shipment, cancellationToken)
+            ?? throw new NotFoundException($"No shipment found with tracking number {trackingNumber}");
     }
 
-    public async Task<bool> UpdateStatusAsync(string trackingNumber, string newStatus, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Applies a status transition and returns the updated shipment.
+    /// Throws <see cref="NotFoundException"/> when missing and
+    /// <see cref="ConflictException"/> when the transition is not allowed.
+    /// </summary>
+    public async Task<Shipment> UpdateStatusAsync(string trackingNumber, string newStatus, CancellationToken cancellationToken = default)
     {
-        var shipment = await _shipmentRepository.GetByTrackingNumberAsync(trackingNumber, cancellationToken);
-        if (shipment is null || !ShipmentStatusRules.CanTransition(shipment.Status, newStatus))
+        var shipment = await GetShipmentAsync(trackingNumber, cancellationToken);
+        if (!ShipmentStatusRules.CanTransition(shipment.Status, newStatus))
         {
-            return false;
+            throw new ConflictException($"Cannot transition shipment {trackingNumber} from {shipment.Status} to {newStatus}");
         }
 
-        return await _shipmentRepository.UpdateStatusAsync(trackingNumber, newStatus, cancellationToken);
+        await _shipmentRepository.UpdateStatusAsync(trackingNumber, newStatus, cancellationToken);
+        shipment.Status = newStatus;
+        return shipment;
     }
 
-    public async Task<bool> DeleteAsync(string trackingNumber, CancellationToken cancellationToken = default)
+    /// <summary>Deletes a shipment; only status Created may be deleted.</summary>
+    public async Task DeleteAsync(string trackingNumber, CancellationToken cancellationToken = default)
     {
-        var shipment = await _shipmentRepository.GetByTrackingNumberAsync(trackingNumber, cancellationToken);
-        if (shipment is null || !ShipmentStatusRules.CanDelete(shipment.Status))
+        var shipment = await GetShipmentAsync(trackingNumber, cancellationToken);
+        if (!ShipmentStatusRules.CanDelete(shipment.Status))
         {
-            return false;
+            throw new ConflictException(
+                $"Shipment {trackingNumber} with status {shipment.Status} cannot be deleted. Only shipments with status 'Created' can be deleted.");
         }
 
-        return await _shipmentRepository.DeleteAsync(trackingNumber, cancellationToken);
+        await _shipmentRepository.DeleteAsync(trackingNumber, cancellationToken);
     }
 
+    /// <summary>Returns scan history; throws <see cref="NotFoundException"/> when the shipment is missing.</summary>
     public async Task<IReadOnlyCollection<ShipmentScan>> GetScansAsync(string trackingNumber, CancellationToken cancellationToken = default)
     {
+        await GetShipmentAsync(trackingNumber, cancellationToken);
         return await _shipmentRepository.GetScansByTrackingNumberAsync(trackingNumber, cancellationToken);
     }
 
@@ -73,6 +106,7 @@ public sealed class ShipmentService
     /// Every scan is validated for tracking-number match, timestamp sanity and status-transition
     /// consistency; failures are returned with a reason code.
     /// </summary>
+    /// <exception cref="NotFoundException">The shipment does not exist (HTTP 404).</exception>
     public async Task<ScanUploadOutcome> UploadScansAsync(
         string trackingNumber,
         IReadOnlyCollection<ShipmentScan> scans,
@@ -80,16 +114,7 @@ public sealed class ShipmentService
     {
         var outcome = new ScanUploadOutcome();
 
-        var shipment = await _shipmentRepository.GetByTrackingNumberAsync(trackingNumber, cancellationToken);
-        if (shipment == null)
-        {
-            foreach (var scan in scans)
-            {
-                outcome.Rejections.Add(new ScanRejection(scan.Id, "shipment_not_found"));
-            }
-            outcome.Rejected = scans.Count;
-            return outcome;
-        }
+        var shipment = await GetShipmentAsync(trackingNumber, cancellationToken);
 
         var currentStatus = shipment.Status;
         foreach (var scan in scans)
