@@ -243,6 +243,18 @@ public sealed class ShipmentServiceTests
     }
 
     [Fact]
+    public async Task UploadScansAsync_MoreThan200Scans_ThrowsBadRequest()
+    {
+        var repo = new Mock<IShipmentRepository>();
+        repo.Setup(r => r.GetByTrackingNumberAsync(Tracking, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(NewShipment("OutForDelivery"));
+        var service = new ShipmentService(repo.Object);
+        var scans = Enumerable.Range(0, 201).Select(_ => NewScan(ScanType.InTransit)).ToList();
+
+        await Assert.ThrowsAsync<BadRequestException>(() => service.UploadScansAsync(Tracking, scans));
+    }
+
+    [Fact]
     public async Task UploadScansAsync_MissingShipment_ThrowsNotFound()
     {
         var repo = new Mock<IShipmentRepository>();
