@@ -20,6 +20,13 @@
   <ItemGroup>
     <ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
     <ProjectReference Include="..\ApexPost.Core\ApexPost.Domain.csproj" />
+    <ProjectReference Include="..\ApexPost.IntegrationTests\ApexPost.IntegrationTests.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Features\**\*.feature">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

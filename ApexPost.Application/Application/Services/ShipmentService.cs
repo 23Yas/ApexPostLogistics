@@ -114,6 +114,11 @@ public sealed class ShipmentService
     {
         var outcome = new ScanUploadOutcome();
 
+        if (scans.Count > MaxScansPerBatch)
+        {
+            throw new BadRequestException($"A scan batch may contain at most {MaxScansPerBatch} scans");
+        }
+
         var shipment = await GetShipmentAsync(trackingNumber, cancellationToken);
 
         var currentStatus = shipment.Status;
@@ -143,6 +148,9 @@ public sealed class ShipmentService
     }
 
     private const string DuplicateMarker = "__duplicate__";
+
+    /// <summary>Maximum scans accepted in a single upload batch.</summary>
+    public const int MaxScansPerBatch = 200;
 
     private async Task<string?> ValidateAndPersistScanAsync(
         string trackingNumber, string status, ShipmentScan scan, CancellationToken cancellationToken)
