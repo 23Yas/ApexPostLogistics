@@ -1,6 +1,8 @@
+using ApexPost.ApiClient;
 using ApexPost.Courier.Offline;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using ClientScanType = ApexPost.ApiClient.ScanType;
 
 namespace ApexPost.Courier.Services;
 
@@ -26,7 +28,7 @@ public sealed class ApiShipmentUploader : IShipmentUploader
 				{
 					Id = scan.Id,
 					TrackingNumber = scan.TrackingNumber,
-					ScanType = Enum.Parse<ScanType>(scan.ScanType.ToString()),
+					ScanType = Enum.Parse<ClientScanType>(scan.ScanType.ToString()),
 					CourierId = scan.CourierId,
 					Location = scan.Location,
 					ScannedAtUtc = scan.ScannedAtUtc,

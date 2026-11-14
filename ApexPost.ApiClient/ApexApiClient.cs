@@ -1,18 +1,19 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Microsoft.Maui.Storage;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace ApexPost.Courier.Services;
+namespace ApexPost.ApiClient;
 
 /// <summary>Source-generated JSON context matching the v2 API contract (camelCase, enums as strings).</summary>
 public static class ApiJson
 {
-    public static readonly ApiJsonContext Context = new ApiJsonContext();
+    // Must use the generated Default singleton: `new ApiJsonContext()` bypasses the
+    // JsonSourceGenerationOptions (naming policy) and falls back to PascalCase.
+    public static ApiJsonContext Context => ApiJsonContext.Default;
 }
 
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, Converters = [typeof(JsonStringEnumConverter)])]
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web, Converters = [typeof(JsonStringEnumConverter)])]
 [JsonSerializable(typeof(ShipmentResponseV2))]
 [JsonSerializable(typeof(CreateShipmentRequest))]
 [JsonSerializable(typeof(ScanUploadRequest))]
@@ -99,20 +100,6 @@ public sealed class ProblemDetailsDto
     public string? Detail { get; set; }
 }
 
-/// <summary>Attaches the bearer token from SecureStorage to every request.</summary>
-public sealed class AuthHeaderHandler : DelegatingHandler
-{
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        var token = await SecureStorage.GetAsync("auth_token");
-        if (!string.IsNullOrEmpty(token))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-        return await base.SendAsync(request, cancellationToken);
-    }
-}
-
 /// <summary>Typed API client for the v2 ApexPost API.</summary>
 public sealed class ApexApiClient
 {
@@ -155,8 +142,8 @@ public sealed class ApexApiClient
         if (response.IsSuccessStatusCode) return;
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            // Expired/invalid token: clear it and notify the app to return to Login.
-            SecureStorage.Remove("auth_token");
+            // Expired/invalid token: notify the app to return to Login.
+            // (The MAUI app clears SecureStorage in its own handler before this runs.)
             if (Unauthorized is not null)
             {
                 await Unauthorized.Invoke();

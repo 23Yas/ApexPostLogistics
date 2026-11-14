@@ -1,4 +1,5 @@
-﻿using ApexPost.Courier.Offline;
+﻿using ApexPost.ApiClient;
+using ApexPost.Courier.Offline;
 using ApexPost.Courier.Services;
 using Microsoft.Extensions.Logging;
 using Polly;

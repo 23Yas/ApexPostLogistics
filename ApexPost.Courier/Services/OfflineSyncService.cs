@@ -1,5 +1,7 @@
+using ApexPost.ApiClient;
 using ApexPost.Courier.Offline;
 using Microsoft.Extensions.Logging;
+using ClientScanType = ApexPost.ApiClient.ScanType;
 
 namespace ApexPost.Courier.Services;
 
@@ -70,7 +72,7 @@ public sealed class OfflineSyncService
 						{
 							Id = s.Id,
 							TrackingNumber = s.TrackingNumber,
-							ScanType = Enum.Parse<ScanType>(s.ScanType.ToString()),
+							ScanType = Enum.Parse<ClientScanType>(s.ScanType.ToString()),
 							CourierId = s.CourierId,
 							Location = s.Location,
 							ScannedAtUtc = s.ScannedAtUtc,

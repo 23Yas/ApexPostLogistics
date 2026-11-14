@@ -11,7 +11,7 @@ public partial class App : Application
 		sync.StartConnectivityListener();
 
 		// On 401: token already cleared by the client; navigate back to Login.
-		services.GetRequiredService<Services.ApexApiClient>().Unauthorized += () =>
+		services.GetRequiredService<ApexPost.ApiClient.ApexApiClient>().Unauthorized += () =>
 			MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync("//login"));
 	}
 
