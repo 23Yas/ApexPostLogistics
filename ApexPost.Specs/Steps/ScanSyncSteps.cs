@@ -6,6 +6,7 @@ using System.Text.Json;
 using ApexPost.Tests;
 using Reqnroll;
 
+// AI-assisted draft (see COPILOT-LOG.md) - reviewed and corrected.
 [Binding]
 [Scope(Tag = "scan-sync")]
 public sealed class ScanSyncSteps

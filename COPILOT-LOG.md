@@ -73,4 +73,10 @@ bug (`new ApiJsonContext()` bypassing `JsonSourceGenerationOptions`) was caught
 *by* `ApexApiClientTests.GetShipmentAsync_200_ReturnsShipment` returning empty
 strings — the tests found a real production bug, not just guarded behaviour.
 
+**Second deliberate mutation (this log's proof):** changed
+`PartnerApiKeyFilter.IsValidKey` to `return true` (accept every key).
+`dotnet test --filter PartnerApiKeyFilterTests` → **2 of 3 tests FAILED**
+(`WrongOrMissingKey_IsRejected`, `Sha256HexHashConfig_IsAccepted`). Restored
+`return matched` → all pass. The BDD step classes are also marked AI-assisted.
+
 AI-assisted test classes are marked with a comment (`ApexApiClientTests.cs`).

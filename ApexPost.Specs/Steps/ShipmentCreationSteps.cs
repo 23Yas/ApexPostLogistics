@@ -7,6 +7,7 @@ using System.Text.Json;
 using ApexPost.Tests;
 using Reqnroll;
 
+// AI-assisted draft (see COPILOT-LOG.md) - reviewed and kept.
 [Binding]
 [Scope(Tag = "shipment-creation")]
 public sealed class ShipmentCreationSteps
