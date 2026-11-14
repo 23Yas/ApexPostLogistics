@@ -85,4 +85,25 @@ EF Core `DbContext`/`DbSet` is never mocked: a mocked `DbSet` returns whatever t
 
 ## 7. Reflection
 
-*(filled in at the end of Week 5)*
+**What the strategy caught.** The unit suite caught a real production bug during
+Week 5: `new ApiJsonContext()` bypassed `JsonSourceGenerationOptions`, so the typed
+client silently used PascalCase while the API speaks camelCase — deserialization
+returned empty objects. Only the new `ApexApiClientTests` (fake handler, exact JSON
+assertions) surfaced it; no existing test covered the client. The BDD specs also
+caught two of *my own* wrong assumptions (admin token on a Courier-only endpoint,
+7-digit tracking numbers) — exactly the kind of contract drift acceptance tests
+exist for.
+
+**What I would change.** I would have split the test projects *before* writing the
+Week 4 tests rather than after — the move was mechanical but cost a cycle. I would
+also have written the batch-limit rule as a BDD scenario instead of only a unit
+test; one rule, two levels, is cheap insurance.
+
+**Most confidence per minute.** The Moq unit tests on `ShipmentService` gave the
+best ratio: ~19 tests in one file, milliseconds each, covering the highest-risk
+area (status transitions, de-dup, delete rules). Integration tests are slower
+(seconds per scenario, LocalDB migrations) but are the only level that proves JWT,
+roles and ProblemDetails end-to-end — worth their cost for the auth surface only.
+BDD gave the least new signal per minute here because the API-level scenarios
+duplicate what `ApiIntegrationTests` already asserts; keep BDD small and business-
+facing, not a second integration suite.

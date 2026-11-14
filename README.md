@@ -81,10 +81,20 @@ These are fictional, for local testing only.
 ## 7. Run the tests
 
 ```
-dotnet test ApexPost.Tests
+dotnet test ApexPostLogistics.slnx
 ```
 
-The tests never use `ApexPostDb`. Each test class creates a database named `ApexPostTest_<guid>`, applies the migrations and drops it when finished. LocalDB must be running.
+or per project:
+
+```
+dotnet test ApexPost.UnitTests       # unit tests: services, rules, validation, HTTP handler fakes (no I/O)
+dotnet test ApexPost.IntegrationTests # WebApplicationFactory API tests, EF Core + Couchbase Lite against real test databases
+dotnet test ApexPost.Specs            # Reqnroll BDD acceptance scenarios (API level)
+```
+
+The integration and spec tests never use `ApexPostDb`. Each factory creates a database named `ApexPostTestApi_<guid>` (API) or `ApexPostTest_<guid>` (web), applies migrations and drops it on dispose. Couchbase tests use a temp directory. LocalDB must be running. See `TESTING-STRATEGY.md` for the pyramid, framework choice and data-access rationale, `TDD-LOG.md` for the test-first cycle and `COPILOT-LOG.md` for AI-assisted drafting review.
+
+Latest full-suite result: **118 passed, 0 failed** (63 unit + 43 integration + 12 BDD specs).
 
 ## 8. Project layout
 
@@ -93,7 +103,9 @@ The tests never use `ApexPostDb`. Each test class creates a database named `Apex
 | `ApexPost.Core` | Domain entities, value objects, application services, repository interfaces |
 | `ApexPost.Infrastructure` | `ApexPostDbContext`, entity configurations, repositories, unit of work, migrations, seeding |
 | `ApexPost.Web` | MVC controllers, views, middleware, filters, `Program.cs` (composition root) |
-| `ApexPost.Tests` | Unit tests (no database), SQL Server integration tests, web tests |
+| `ApexPost.UnitTests` | Unit tests: domain rules, services with Moq, validation, fake HTTP handler client tests |
+| `ApexPost.IntegrationTests` | `WebApplicationFactory` tests for Web and Api, EF Core + Couchbase Lite repository tests |
+| `ApexPost.Specs` | Reqnroll BDD features and step definitions |
 | `sql/` | Reporting queries, stored procedures, performance scripts, least-privilege script |
 | `docs/adr/` | Architecture decision records |
 
@@ -106,6 +118,7 @@ See `DESIGN.md` for the entity-relationship diagram, delete behaviour and the re
 | `ApexPost.Courier.Offline` | Couchbase Lite offline scan store (Part A) |
 | `ApexPost.Courier.Offline.Console` | Console test harness for the offline store |
 | `ApexPost.Api` | REST API v1/v2 with Swagger UI (Parts B, C, D) |
+| `ApexPost.ApiClient` | Typed v2 API client + DTOs + source-generated JSON context (extracted from the MAUI app for testability) |
 | `ApexPost.Client` | NSwag-generated C# client from `contracts/v2.json` |
 | `ApexPost.Client.Console` | Console consumer for the generated client |
 | `ApexPost.Courier` | .NET MAUI courier app with offline sync (Part D) |
