@@ -112,13 +112,9 @@ public sealed class ShipmentService
         IReadOnlyCollection<ShipmentScan> scans,
         CancellationToken cancellationToken = default)
     {
+        EnsureBatchSize(scans);
+
         var outcome = new ScanUploadOutcome();
-
-        if (scans.Count > MaxScansPerBatch)
-        {
-            throw new BadRequestException($"A scan batch may contain at most {MaxScansPerBatch} scans");
-        }
-
         var shipment = await GetShipmentAsync(trackingNumber, cancellationToken);
 
         var currentStatus = shipment.Status;
@@ -151,6 +147,14 @@ public sealed class ShipmentService
 
     /// <summary>Maximum scans accepted in a single upload batch.</summary>
     public const int MaxScansPerBatch = 200;
+
+    private static void EnsureBatchSize(IReadOnlyCollection<ShipmentScan> scans)
+    {
+        if (scans.Count > MaxScansPerBatch)
+        {
+            throw new BadRequestException($"A scan batch may contain at most {MaxScansPerBatch} scans");
+        }
+    }
 
     private async Task<string?> ValidateAndPersistScanAsync(
         string trackingNumber, string status, ShipmentScan scan, CancellationToken cancellationToken)

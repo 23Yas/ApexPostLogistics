@@ -367,3 +367,4 @@ AUDIT-SAMPLE.json
 cookies.txt
 login_out.txt
 test-output.txt
+*.feature.cs
