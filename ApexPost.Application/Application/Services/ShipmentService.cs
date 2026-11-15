@@ -6,10 +6,12 @@ namespace ApexPost.Core.Application.Services;
 public sealed class ShipmentService
 {
     private readonly IShipmentRepository _shipmentRepository;
+    private readonly TimeProvider _timeProvider;
 
-    public ShipmentService(IShipmentRepository shipmentRepository)
+    public ShipmentService(IShipmentRepository shipmentRepository, TimeProvider? timeProvider = null)
     {
         _shipmentRepository = shipmentRepository;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<Shipment?> GetByTrackingNumberAsync(string trackingNumber, CancellationToken cancellationToken = default)
@@ -164,7 +166,7 @@ public sealed class ShipmentService
             return "tracking_number_mismatch";
         }
 
-        if (scan.ScannedAtUtc > DateTimeOffset.UtcNow.AddMinutes(5))
+        if (scan.ScannedAtUtc > _timeProvider.GetUtcNow().AddMinutes(5))
         {
             return "scan_time_in_future";
         }

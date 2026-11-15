@@ -25,6 +25,7 @@ builder.Services.AddScoped<IShipmentRepository, ShipmentRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Register services
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ShipmentService>();
 
 // Add controllers - enums serialize as strings to match the courier app contract
