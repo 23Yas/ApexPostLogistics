@@ -1,3 +1,4 @@
+// AI-assisted draft (see COPILOT-LOG.md) - reviewed and corrected.
 namespace ApexPost.Specs;
 
 using System.Net.Http.Headers;
@@ -6,34 +7,40 @@ using System.Text.Json;
 using ApexPost.Tests;
 using Reqnroll;
 
-// AI-assisted draft (see COPILOT-LOG.md) - reviewed and corrected.
 [Binding]
 [Scope(Tag = "scan-sync")]
 public sealed class ScanSyncSteps
 {
-    private ApiWebApplicationFactory? _factory;
-    private HttpClient? _admin;
-    private HttpClient? _courier;
-    private string _courierId = "";
-    private HttpResponseMessage? _response;
-    private JsonElement _uploadResult;
+    private readonly ScenarioContext _ctx;
+
+    public ScanSyncSteps(ScenarioContext ctx) => _ctx = ctx;
+
+    private ApiWebApplicationFactory Factory => _ctx.Get<ApiWebApplicationFactory>("factory");
+    private HttpClient Admin => _ctx.Get<HttpClient>("admin");
+    private HttpClient? Courier => _ctx.Get<HttpClient?>("courier");
+    private string CourierId => _ctx.Get<string>("courierId");
+    private HttpResponseMessage? Response => _ctx.Get<HttpResponseMessage?>("response");
+    private JsonElement UploadResult => _ctx.Get<JsonElement>("uploadResult");
 
     [BeforeScenario]
     public async Task BeforeScenario()
     {
-        _factory = new ApiWebApplicationFactory();
-        await _factory.EnsureDatabaseReadyAsync();
-        _admin = _factory.CreateClient();
-        _admin.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync("Admin"));
+        var factory = new ApiWebApplicationFactory();
+        await factory.EnsureDatabaseReadyAsync();
+        var admin = factory.CreateClient();
+        admin.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", await factory.GetTokenAsync("Admin"));
+
+        _ctx["factory"] = factory;
+        _ctx["admin"] = admin;
     }
 
     [AfterScenario]
     public void AfterScenario()
     {
-        _courier?.Dispose();
-        _admin?.Dispose();
-        _factory?.Dispose();
+        if (_ctx.TryGetValue<HttpClient?>("courier", out var courier)) courier?.Dispose();
+        _ctx.Get<HttpClient>("admin").Dispose();
+        _ctx.Get<ApiWebApplicationFactory>("factory").Dispose();
     }
 
     [Given("the API is running with a fresh test database")]
@@ -45,10 +52,12 @@ public sealed class ScanSyncSteps
     [Given("I have a courier token for {string}")]
     public async Task CourierToken(string courierId)
     {
-        _courierId = courierId;
-        _courier = _factory!.CreateClient();
-        _courier.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", await _factory.GetTokenAsync("Courier", courierId));
+        var courier = Factory.CreateClient();
+        courier.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", await Factory.GetTokenAsync("Courier", courierId));
+
+        _ctx["courier"] = courier;
+        _ctx["courierId"] = courierId;
     }
 
     [Given("a shipment {string} exists in status {string}")]
@@ -56,7 +65,7 @@ public sealed class ScanSyncSteps
     {
         await CreateShipmentAsync(tracking);
         // PATCH /status is Courier-only, so transitions go through the courier client.
-        var statusClient = _courier ?? _admin!;
+        var statusClient = Courier ?? Admin;
         foreach (var step in StepsTo(status))
         {
             var patch = await statusClient.PatchAsJsonAsync($"/api/v2/shipments/{tracking}/status", new { status = step });
@@ -77,7 +86,7 @@ public sealed class ScanSyncSteps
 
     private async Task CreateShipmentAsync(string tracking)
     {
-        var response = await _admin!.PostAsJsonAsync("/api/v2/shipments", new
+        var response = await Admin.PostAsJsonAsync("/api/v2/shipments", new
         {
             trackingNumber = tracking,
             weightKg = 1.0m,
@@ -92,7 +101,7 @@ public sealed class ScanSyncSteps
 
     private async Task UploadScanAsync(string scanId, string tracking, string scanType, string? scanTrackingOverride = null)
     {
-        _response = await _courier!.PostAsJsonAsync($"/api/v2/shipments/{tracking}/scans", new
+        var response = await Courier!.PostAsJsonAsync($"/api/v2/shipments/{tracking}/scans", new
         {
             scans = new[]
             {
@@ -101,7 +110,7 @@ public sealed class ScanSyncSteps
                     id = scanId,
                     trackingNumber = scanTrackingOverride ?? tracking,
                     scanType,
-                    courierId = _courierId,
+                    courierId = CourierId,
                     location = "Depot B",
                     scannedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
                     // Delivered scans must carry a recipient signature in notes (API validation rule).
@@ -109,21 +118,22 @@ public sealed class ScanSyncSteps
                 }
             }
         });
-        _response.EnsureSuccessStatusCode();
-        _uploadResult = await _response.Content.ReadFromJsonAsync<JsonElement>();
+        response.EnsureSuccessStatusCode();
+        _ctx["response"] = response;
+        _ctx["uploadResult"] = await response.Content.ReadFromJsonAsync<JsonElement>();
     }
 
     [When("I upload a {string} scan for {string} as courier {string}")]
     public async Task UploadScan(string scanType, string tracking, string courier)
     {
-        Assert.Equal(_courierId, courier);
+        Assert.Equal(CourierId, courier);
         await UploadScanAsync(Guid.NewGuid().ToString(), tracking, scanType);
     }
 
     [When("I upload a {string} scan with tracking {string} to shipment {string} as courier {string}")]
     public async Task UploadMismatchedScan(string scanType, string scanTracking, string shipmentTracking, string courier)
     {
-        Assert.Equal(_courierId, courier);
+        Assert.Equal(CourierId, courier);
         await UploadScanAsync(Guid.NewGuid().ToString(), shipmentTracking, scanType, scanTracking);
     }
 
@@ -133,35 +143,31 @@ public sealed class ScanSyncSteps
 
     [When("I upload the same scan {string} again")]
     public async Task UploadSameScanAgain(string scanId)
-    {
-        // Reuses the tracking number of the previous upload via the last response's URL is fragile;
-        // the feature only re-uploads against the shipment from Background, so use it.
-        await UploadScanAsync(scanId, "APX-71000001", "InTransit");
-    }
+        => await UploadScanAsync(scanId, "APX-71000001", "InTransit");
 
     [Then("the upload response accepted count is {int}")]
     public void AcceptedCount(int expected)
-        => Assert.Equal(expected, _uploadResult.GetProperty("accepted").GetInt32());
+        => Assert.Equal(expected, UploadResult.GetProperty("accepted").GetInt32());
 
     [Then("the upload response duplicates skipped count is {int}")]
     public void DuplicatesSkippedCount(int expected)
-        => Assert.Equal(expected, _uploadResult.GetProperty("duplicatesSkipped").GetInt32());
+        => Assert.Equal(expected, UploadResult.GetProperty("duplicatesSkipped").GetInt32());
 
     [Then("the upload response rejected count is {int}")]
     public void RejectedCount(int expected)
-        => Assert.Equal(expected, _uploadResult.GetProperty("rejected").GetInt32());
+        => Assert.Equal(expected, UploadResult.GetProperty("rejected").GetInt32());
 
     [Then("the upload response {string} count is {int}")]
     public void OutcomeCount(string outcome, int expected)
     {
         var property = outcome == "accepted" ? "accepted" : "rejected";
-        Assert.Equal(expected, _uploadResult.GetProperty(property).GetInt32());
+        Assert.Equal(expected, UploadResult.GetProperty(property).GetInt32());
     }
 
     [Then("the shipment {string} status is {string}")]
     public async Task ShipmentStatusIs(string tracking, string expected)
     {
-        var response = await _admin!.GetAsync($"/api/v2/shipments/{tracking}");
+        var response = await Admin.GetAsync($"/api/v2/shipments/{tracking}");
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(expected, body.GetProperty("status").GetString());

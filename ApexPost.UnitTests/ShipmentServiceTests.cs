@@ -1,4 +1,5 @@
-namespace ApexPost.Tests;
+// AI-assisted draft (see COPILOT-LOG.md, prompt 1) - reviewed and kept.
+namespace ApexPost.UnitTests;
 
 using ApexPost.Core.Application.Interfaces;
 using ApexPost.Core.Application.Services;
