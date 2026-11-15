@@ -15,6 +15,14 @@ public sealed class ShipmentServiceTests
 {
     private const string Tracking = "APX-12345678";
 
+    /// <summary>Fixed clock so tests never depend on the real current time.</summary>
+    private static readonly DateTimeOffset TestNow = new(2026, 6, 1, 12, 0, 0, TimeSpan.Zero);
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
     private static Shipment NewShipment(string status = "Created") => new()
     {
         TrackingReference = Tracking,
@@ -27,7 +35,7 @@ public sealed class ShipmentServiceTests
         ScanType = type,
         CourierId = "courier-001",
         Location = "Depot A",
-        ScannedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1)
+        ScannedAtUtc = TestNow.AddMinutes(-1)
     };
 
     [Fact]
@@ -206,16 +214,14 @@ public sealed class ShipmentServiceTests
             .ReturnsAsync(NewShipment("Created"));
         repo.Setup(r => r.GetScanByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ShipmentScan?)null);
-        var service = new ShipmentService(repo.Object);
-        var future = NewScan();
-        // ScannedAtUtc is init-only on the entity; build a future-dated scan via object initializer.
-        future = new ShipmentScan
+        var service = new ShipmentService(repo.Object, new FixedTimeProvider(TestNow));
+        var future = new ShipmentScan
         {
             TrackingNumber = Tracking,
             ScanType = ScanType.Pickup,
             CourierId = "courier-001",
             Location = "Depot A",
-            ScannedAtUtc = DateTimeOffset.UtcNow.AddHours(1)
+            ScannedAtUtc = TestNow.AddHours(1)
         };
 
         var outcome = await service.UploadScansAsync(Tracking, new[] { future });

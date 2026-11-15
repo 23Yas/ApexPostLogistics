@@ -112,7 +112,7 @@ public sealed class ScanSyncSteps
                     scanType,
                     courierId = CourierId,
                     location = "Depot B",
-                    scannedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
+                    scannedAtUtc = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
                     // Delivered scans must carry a recipient signature in notes (API validation rule).
                     notes = scanType == "Delivered" ? "signature:BDD-Recipient" : ""
                 }

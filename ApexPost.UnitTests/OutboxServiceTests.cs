@@ -14,7 +14,7 @@ public sealed class OutboxServiceTests
         ScanType = ScanType.Pickup,
         CourierId = "courier-001",
         Location = "Depot A",
-        ScannedAtUtc = DateTimeOffset.UtcNow
+        ScannedAtUtc = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
     };
 
     private static (OutboxService Service, Mock<IScanRepository> Repo, Mock<IShipmentUploader> Uploader) Build(

@@ -30,7 +30,7 @@ public sealed class CouchbaseScanRepositoryTests : IDisposable
         ScanType = ScanType.Pickup,
         CourierId = "courier-001",
         Location = "Depot A",
-        ScannedAtUtc = at ?? DateTimeOffset.UtcNow,
+        ScannedAtUtc = at ?? new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
         Notes = ""
     };
 
@@ -65,8 +65,8 @@ public sealed class CouchbaseScanRepositoryTests : IDisposable
     [Fact]
     public async Task PendingQuery_ReturnsOnlyPending_OrderedByScanTime()
     {
-        var older = NewScan(at: DateTimeOffset.UtcNow.AddHours(-2));
-        var newer = NewScan(at: DateTimeOffset.UtcNow.AddHours(-1));
+        var older = NewScan(at: new DateTimeOffset(2026, 1, 1, 8, 0, 0, TimeSpan.Zero));
+        var newer = NewScan(at: new DateTimeOffset(2026, 1, 1, 9, 0, 0, TimeSpan.Zero));
         var synced = NewScan();
         await _repository.CreateAsync(older);
         await _repository.CreateAsync(newer);
