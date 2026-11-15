@@ -111,6 +111,13 @@ Latest full-suite result: **136 passed, 0 failed** (81 unit + 43 integration + 1
 
 See `DESIGN.md` for the entity-relationship diagram, delete behaviour and the requirement status, and `PERFORMANCE.md` for the index evidence.
 
+## Branches
+
+Week work is delivered on `weekN-partX` / `week5-testing` branches merged into `master`.
+`origin/week5-testing` exists and is identical to `master` (`eac8d5d`) — verify with
+`git ls-remote --heads origin | grep week5`. All Week 5 commits, including the
+`RED:`/`GREEN:`/`REFACTOR:` TDD sequence, are reachable from both branches.
+
 ## Week 4 projects
 
 | Project | Contents |
