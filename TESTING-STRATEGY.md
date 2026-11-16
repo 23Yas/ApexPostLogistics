@@ -107,3 +107,5 @@ roles and ProblemDetails end-to-end — worth their cost for the auth surface on
 BDD gave the least new signal per minute here because the API-level scenarios
 duplicate what `ApiIntegrationTests` already asserts; keep BDD small and business-
 facing, not a second integration suite.
+
+![Test strategy pyramid](docs/testing-strategy.svg)

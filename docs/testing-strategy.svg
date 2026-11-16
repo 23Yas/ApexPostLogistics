@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="960" height="620" fill="#ffffff"/>
+  <text x="480" y="34" font-size="22" font-weight="bold" text-anchor="middle" fill="#1a1a2e">ApexPost Logistics — Week 5 Test Strategy</text>
+
+  <!-- Pyramid -->
+  <polygon points="480,70 700,300 260,300" fill="#2ecc71"/>
+  <polygon points="480,70 830,520 130,520" fill="#3498db" opacity="0.85"/>
+  <polygon points="480,70 960,620 0,620" fill="#e74c3c" opacity="0.8"/>
+
+  <!-- Layer labels -->
+  <text x="480" y="140" font-size="15" font-weight="bold" text-anchor="middle" fill="#fff">BDD / Acceptance ~10%</text>
+  <text x="480" y="160" font-size="11" text-anchor="middle" fill="#fff">ApexPost.Specs — Reqnroll, API level</text>
+
+  <text x="480" y="240" font-size="15" font-weight="bold" text-anchor="middle" fill="#fff">Integration ~25%</text>
+  <text x="480" y="260" font-size="11" text-anchor="middle" fill="#fff">ApexPost.IntegrationTests — WebApplicationFactory, LocalDB, Couchbase Lite</text>
+
+  <text x="480" y="430" font-size="15" font-weight="bold" text-anchor="middle" fill="#fff">Unit ~65%</text>
+  <text x="480" y="450" font-size="11" text-anchor="middle" fill="#fff">ApexPost.UnitTests — Moq services, DTO validation, fake HttpMessageHandler</text>
+
+  <!-- Right panel: risk map -->
+  <rect x="620" y="80" width="320" height="280" rx="8" fill="#f4f6f8" stroke="#ccc"/>
+  <text x="640" y="108" font-size="15" font-weight="bold" fill="#1a1a2e">Risk map → test level</text>
+  <g font-size="11.5" fill="#222">
+    <text x="640" y="132">Status transitions .......... Unit + Integration</text>
+    <text x="640" y="150">Duplicate tracking no. ...... Unit + BDD</text>
+    <text x="640" y="168">Scan de-dup / idempotency ... Unit + Integration</text>
+    <text x="640" y="186">JWT role rules .............. Integration</text>
+    <text x="640" y="204">Client retry/resilience .... Unit (fake handler)</text>
+    <text x="640" y="222">Outbox transient/permanent . Unit (Moq)</text>
+    <text x="640" y="240">Partner API key ............. Unit + Integration</text>
+    <text x="640" y="258">ProblemDetails contract ..... Integration + BDD</text>
+    <text x="640" y="276">API versioning/sunset ...... Integration</text>
+    <text x="640" y="294">Batch limit (TDD) ........... Unit</text>
+    <text x="640" y="312">Weight/tracking format ...... Unit (Theory)</text>
+  </g>
+
+  <!-- Bottom panel: flow -->
+  <rect x="60" y="470" width="840" height="120" rx="8" fill="#f4f6f8" stroke="#ccc"/>
+  <text x="80" y="498" font-size="15" font-weight="bold" fill="#1a1a2e">How a change flows through the pyramid</text>
+  <g font-size="12" fill="#222">
+    <rect x="80" y="512" width="150" height="34" rx="6" fill="#e74c3c"/>
+    <text x="155" y="534" text-anchor="middle" fill="#fff">Unit test fails (RED)</text>
+    <rect x="250" y="512" width="160" height="34" rx="6" fill="#f39c12"/>
+    <text x="330" y="534" text-anchor="middle" fill="#fff">Minimal impl → GREEN</text>
+    <rect x="430" y="512" width="150" height="34" rx="6" fill="#3498db"/>
+    <text x="505" y="534" text-anchor="middle" fill="#fff">Refactor + boundary</text>
+    <rect x="600" y="512" width="160" height="34" rx="6" fill="#2ecc71"/>
+    <text x="680" y="534" text-anchor="middle" fill="#fff">Integration verifies</text>
+    <rect x="780" y="512" width="110" height="34" rx="6" fill="#9b59b6"/>
+    <text x="835" y="534" text-anchor="middle" fill="#fff">BDD acceptance</text>
+    <text x="80" y="572" font-size="11" fill="#555">Data: mocked IShipmentRepository/IScanRepository/IShipmentUploader · LocalDB test DBs · Couchbase Lite temp dir · fake HttpMessageHandler (no real network)</text>
+  </g>
+</svg>
